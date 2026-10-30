@@ -5,6 +5,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
+import com.nickesh.tvlauncher.data.settings.BackgroundSource
+import com.nickesh.tvlauncher.data.settings.Scene
 import com.nickesh.tvlauncher.data.settings.Settings
 import com.nickesh.tvlauncher.domain.apps.AppOrdering
 import com.nickesh.tvlauncher.domain.apps.InstalledApp
@@ -107,6 +109,24 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                             if (e is CancellationException) throw e
                         }
                         delay(if (ok) 30.minutes else 90.seconds)
+                    }
+                }
+        }
+    }
+
+    init {
+        viewModelScope.launch {
+            container.settings.settings
+                .map { (it.backgroundSource == BackgroundSource.SCENES && it.shuffle) to it.changeInterval.minutes }
+                .distinctUntilChanged()
+                .collectLatest { (enabled, minutes) ->
+                    if (enabled && minutes != null) {
+                        while (true) {
+                            delay(minutes.minutes)
+                            container.settings.update {
+                                it.copy(scene = Scene.entries[(it.scene.ordinal + 1) % Scene.entries.size])
+                            }
+                        }
                     }
                 }
         }

@@ -23,7 +23,11 @@ import com.nickesh.tvlauncher.ui.home.AppTile
 import com.nickesh.tvlauncher.ui.home.HomeScreen
 import com.nickesh.tvlauncher.ui.home.HomeViewModel
 import com.nickesh.tvlauncher.ui.home.SystemAction
+import com.nickesh.tvlauncher.ui.settings.BackgroundScreen
+import com.nickesh.tvlauncher.ui.settings.SettingsScreen
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 import com.nickesh.tvlauncher.ui.welcome.WelcomeScreen
 import kotlin.math.max
 import kotlinx.coroutines.delay
@@ -98,6 +102,23 @@ class MainActivity : ComponentActivity() {
                                 accent = homeState.accent,
                                 onLaunch = launch,
                                 onBack = { screen = Screen.Home },
+                            )
+                        }
+                        Screen.Settings -> {
+                            val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
+                            SettingsScreen(
+                                settings = cur,
+                                onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
+                                onOpenBackground = { screen = Screen.Background },
+                                onBack = { screen = Screen.Home },
+                            )
+                        }
+                        Screen.Background -> {
+                            val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
+                            BackgroundScreen(
+                                settings = cur,
+                                onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
+                                onBack = { screen = Screen.Settings },
                             )
                         }
                         else -> {
