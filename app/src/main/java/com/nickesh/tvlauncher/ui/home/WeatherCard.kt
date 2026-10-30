@@ -91,7 +91,7 @@ fun WeatherCard(weather: WeatherUi?, city: String, accent: Color, onClick: () ->
                         fontSize = 22.spx(),
                     )
                     Text(
-                        weather?.city ?: city,
+                        city,
                         color = Color.White.copy(alpha = 0.7f),
                         fontFamily = Outfit,
                         fontWeight = FontWeight.W400,
