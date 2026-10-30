@@ -94,6 +94,19 @@ class WeatherRepositoryTest {
         assertEquals(cache.value, s)
     }
 
+    @Test fun apiFailure_staleFallback_requiresSamePlaceAndUnit() = runBlocking {
+        val api = FakeApi(fail = true); val cache = MemoryCache()
+        val tokyo = snap(at = now - 120 * min).copy(city = "Tokyo", lat = 35.0, lon = 139.0)
+        cache.byKey[Places.clock(0)] = tokyo
+        val repo = WeatherRepository(api, cache) { now }
+        // Re-picked to Lisbon while offline: Tokyo's sky must not be served.
+        assertNull(repo.load(Place(Places.clock(0), "Lisbon", "Lisbon", 38.72, -9.14), TempUnit.F, "America/New_York"))
+        // Same place: the stale snapshot is fine.
+        assertEquals(tokyo, repo.load(Place(Places.clock(0), "Tokyo", "Tokyo", 35.0, 139.0), TempUnit.F, "America/New_York"))
+        // Same place, unit switched: a °F snapshot never renders as °C.
+        assertNull(repo.load(Place(Places.clock(0), "Tokyo", "Tokyo", 35.0, 139.0), TempUnit.C, "America/New_York"))
+    }
+
     @Test fun apiFailure_noCache_returnsNull() = runBlocking {
         val api = FakeApi(fail = true)
         val s = WeatherRepository(api, MemoryCache()) { now }.load(place("Columbus"), TempUnit.F, "America/New_York")

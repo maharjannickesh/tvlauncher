@@ -94,7 +94,7 @@ class WeatherRepository(
     /**
      * Cached when fresh for [place] (same location and unit, under 30 min old); otherwise fetched — straight from
      * the place's coordinates, or by geocoding [Place.queryName] when it has none. On any failure: the cache (even
-     * stale) when it is for the same place, else null.
+     * stale) when it is for the same place and unit, else null.
      */
     suspend fun load(place: Place, unit: TempUnit, zone: String): WeatherSnapshot? {
         val cached = try {
@@ -125,8 +125,8 @@ class WeatherRepository(
             throw e
         } catch (e: Exception) {
             log("${place.key} ${place.name} failed: ${e.message}")
-            // Stale is fine, another place's weather is not (a re-picked clock must not show the old city's sky).
-            cached?.takeIf { WeatherFreshness.samePlace(it, place) }
+            // Stale is fine; another place's (or another unit's) weather is not (a re-picked clock must not show the old city's sky).
+            cached?.takeIf { it.unit == unit && WeatherFreshness.samePlace(it, place) }
         }
     }
 

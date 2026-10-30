@@ -28,7 +28,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.withTimeoutOrNull
+import com.nickesh.tvlauncher.data.weather.PlaceWeather
 import com.nickesh.tvlauncher.data.weather.Places
+import com.nickesh.tvlauncher.data.weather.WeatherByPlace
 import com.nickesh.tvlauncher.data.weather.WeatherFreshness
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
@@ -97,13 +99,16 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
 
     private val weatherRepo = container.weather
 
-    /** Big-card weather per place key ([Places.HOME] is the one shown); a key is null until its first load succeeds. */
-    private val _weatherByKey = MutableStateFlow<Map<String, WeatherUi?>>(emptyMap())
-    val weatherByKey: StateFlow<Map<String, WeatherUi?>> = _weatherByKey
+    /**
+     * Big-card weather per place key ([Places.HOME] is the one shown), tagged with the place it was loaded for so
+     * [build] never shows it under a re-picked place's name; a key is absent until its first load.
+     */
+    private val _weatherByKey = MutableStateFlow<Map<String, PlaceWeather<WeatherUi>>>(emptyMap())
+    val weatherByKey: StateFlow<Map<String, PlaceWeather<WeatherUi>>> = _weatherByKey
 
-    /** Current conditions per place key, for the clock cards. */
-    private val _currentByKey = MutableStateFlow<Map<String, ClockWeather?>>(emptyMap())
-    val currentByKey: StateFlow<Map<String, ClockWeather?>> = _currentByKey
+    /** Current conditions per place key, for the clock cards; tagged like [weatherByKey]. */
+    private val _currentByKey = MutableStateFlow<Map<String, PlaceWeather<ClockWeather>>>(emptyMap())
+    val currentByKey: StateFlow<Map<String, PlaceWeather<ClockWeather>>> = _currentByKey
 
     private val refresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
@@ -128,8 +133,8 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                             try {
                                 val snap = weatherRepo.load(place, unit, zone)
                                 val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
-                                _weatherByKey.update { it + (key to ui) }
-                                _currentByKey.update { it + (key to snap?.let(weatherRepo::toCurrent)) }
+                                _weatherByKey.update { it + (key to PlaceWeather(place, ui)) }
+                                _currentByKey.update { it + (key to PlaceWeather(place, snap?.let(weatherRepo::toCurrent))) }
                                 // The home card needs the day columns; a clock card only needs current conditions.
                                 val usable = if (key == Places.HOME) ui != null else snap != null
                                 ok = usable && WeatherFreshness.isFresh(snap, place, unit, System.currentTimeMillis())
@@ -171,18 +176,21 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     private fun build(
         settings: Settings,
         allApps: List<AppTile>,
-        weather: Map<String, WeatherUi?>,
-        current: Map<String, ClockWeather?>,
+        weather: Map<String, PlaceWeather<WeatherUi>>,
+        current: Map<String, PlaceWeather<ClockWeather>>,
         now: Instant,
     ): HomeUiState {
         val home = now.atZone(ZoneId.of(settings.homeZone))
+        val places = Places.fromSettings(settings)
         return HomeUiState(
             greeting = ClockMath.greeting(home.hour, settings.name),
             homeCity = settings.homeCity,
             hero = ClockMath.timeText(home, settings.use24h),
             dateLine = ClockMath.dateLine(home),
-            weather = weather[Places.HOME],
-            clocks = settings.clocks.mapIndexed { i, c -> ClockMath.snapshot(c, home, now, settings.use24h, current[Places.clock(i)]) },
+            weather = WeatherByPlace.forCurrent(weather, places[0]),
+            clocks = settings.clocks.mapIndexed { i, c ->
+                ClockMath.snapshot(c, home, now, settings.use24h, WeatherByPlace.forCurrent(current, places[i + 1]))
+            },
             apps = homeRow(allApps, settings.favourites),
             accent = Color(settings.accentArgb),
             settings = settings,
