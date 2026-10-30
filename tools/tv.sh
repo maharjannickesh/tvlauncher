@@ -28,16 +28,52 @@ serial() {
 OURS=com.nickesh.tvlauncher/.MainActivity
 STOCK_PKG=com.google.android.apps.tv.launcherx
 STOCK=$STOCK_PKG/.home.HomeActivity
+# setupwraith's RecoveryActivity is a HOME candidate at priority 1 (ours is capped at 0), so it
+# must be disabled too while we own Home. The component only, never the package.
+RECOVERY_PKG=com.google.android.tungsten.setupwraith
+RECOVERY=$RECOVERY_PKG/.RecoveryActivity
+RECOVERY_CLS=$RECOVERY_PKG.RecoveryActivity
+
+home_resolve() { "$ADB" -s "$1" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1 | tr -d '\r'; }
+
+# Prints 1 if RecoveryActivity is in user 0's disabledComponents (from dumpsys package), 0 if not,
+# nothing if dumpsys failed. pm list packages -d cannot see components.
+recovery_disabled() {
+  local d; d="$("$ADB" -s "$1" shell dumpsys package "$RECOVERY_PKG" 2>/dev/null)" || return 1
+  [ -n "$d" ] || return 1
+  printf '%s\n' "$d" | tr -d '\r' | awk -v c="$RECOVERY_CLS" '
+    /^ *User [0-9]+:/ { u = ($2 == "0:"); blk = ""; next }
+    u && /^ *disabledComponents:/ { blk = "d"; next }
+    u && /^ *(enabledComponents|runtime permissions|install permissions):/ { blk = ""; next }
+    u && blk == "d" && $1 == c { found = 1 }
+    END { print found ? 1 : 0 }'
+}
 
 # Prints the current HOME component and whether the stock launcher is disabled (0|1).
 home_status() {
   local s; s="$(serial)"
   [ -n "$s" ] || { echo "TV not found" >&2; return 1; }
-  "$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1
+  home_resolve "$s"
   local dis; dis="$("$ADB" -s "$s" shell pm list packages -d 2>/dev/null)" || { echo "launcherx disabled: unknown" >&2; return 1; }
   dis="$(printf '%s' "$dis" | tr -d '\r')"
   if [ -n "$dis" ] && printf '%s\n' "$dis" | grep -qv '^package:'; then echo "launcherx disabled: unknown" >&2; return 1; fi
   if printf '%s\n' "$dis" | grep -qx "package:$STOCK_PKG"; then echo "launcherx disabled: 1"; else echo "launcherx disabled: 0"; fi
+  local r; r="$(recovery_disabled "$s")"
+  [ -n "$r" ] || { echo "recovery disabled: unknown" >&2; return 1; }
+  echo "recovery disabled: $r"
+}
+
+# Re-enables launcherx and RecoveryActivity, points Home back at launcherx, verifies. Prints raw pm output.
+home_restore() {
+  local s="$1" out rc=0
+  out="$("$ADB" -s "$s" shell pm enable "$STOCK_PKG" 2>&1)"; echo "pm enable launcherx: $out"
+  out="$("$ADB" -s "$s" shell pm enable "$RECOVERY" 2>&1)"; echo "pm enable RecoveryActivity: $out"
+  out="$("$ADB" -s "$s" shell cmd package set-home-activity "$STOCK" 2>&1)"; echo "set-home-activity: $out"
+  local now; now="$(home_resolve "$s")"
+  [ "$now" = "$STOCK" ] || { echo "Home resolves to '$now', not $STOCK after restore" >&2; rc=1; }
+  home_status || rc=1
+  [ "$(recovery_disabled "$s")" = 0 ] || { echo "RecoveryActivity still disabled" >&2; rc=1; }
+  return $rc
 }
 
 cmd="${1:-}"; shift || true
@@ -77,21 +113,21 @@ case "$cmd" in
   home-take)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    out="$("$ADB" -s "$s" shell cmd package set-home-activity "$OURS" 2>&1)"
-    case "$out" in *Success*) ;; *) echo "set-home-activity failed ($out); stock launcher left enabled" >&2; exit 1 ;; esac
-    now="$("$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1 | tr -d '\r')"
-    [ "$now" = "$OURS" ] || { echo "Home resolves to '$now', not $OURS; stock launcher left enabled" >&2; exit 1; }
-    out="$("$ADB" -s "$s" shell pm disable-user --user 0 "$STOCK_PKG" 2>&1)"
-    case "$out" in *"new state: disabled-user"*) ;; *) echo "pm disable-user failed ($out); run home-restore" >&2; home_status; exit 1 ;; esac
+    out="$("$ADB" -s "$s" shell cmd package set-home-activity "$OURS" 2>&1)"; echo "set-home-activity: $out"
+    case "$out" in *Success*) ;; *) echo "set-home-activity failed; nothing disabled" >&2; exit 1 ;; esac
+    out="$("$ADB" -s "$s" shell pm disable-user --user 0 "$RECOVERY" 2>&1)"; echo "pm disable-user RecoveryActivity: $out"
+    out="$("$ADB" -s "$s" shell pm disable-user --user 0 "$STOCK_PKG" 2>&1)"; echo "pm disable-user launcherx: $out"
+    # Verify after disabling, from device state rather than pm's wording.
+    now="$(home_resolve "$s")"
+    if [ "$now" != "$OURS" ]; then
+      echo "Home resolves to '$now', not $OURS; restoring" >&2
+      home_restore "$s"; exit 1
+    fi
     home_status ;;
   home-restore)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    out="$("$ADB" -s "$s" shell pm enable "$STOCK_PKG" 2>&1)"
-    case "$out" in *"new state: enabled"*|*"already enabled"*) ;; *) echo "pm enable failed ($out); not changing home activity" >&2; exit 1 ;; esac
-    out="$("$ADB" -s "$s" shell cmd package set-home-activity "$STOCK" 2>&1)"
-    case "$out" in *Success*) ;; *) echo "set-home-activity failed ($out)" >&2; home_status; exit 1 ;; esac
-    home_status ;;
+    home_restore "$s" || exit 1 ;;
   idle-set)
     m="${1:-}"
     case "$m" in ''|*[!0-9]*) echo "usage: tv.sh idle-set <minutes>  (integer 1..1440)" >&2; exit 2 ;; esac

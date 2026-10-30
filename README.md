@@ -53,10 +53,14 @@ Measured 2026-10-29 with `am start -W` after a force-stop:
 
 The app declares the HOME intent filter and replays the Welcome splash after at least 10 minutes of standby (matches the TV's "Screen saver -> When to start"; see `docs/superpowers/specs/2026-10-30-home-takeover-design.md`). Switching the Home key over is done from the Mac over adb:
 
-    tools/tv.sh home-status      # prints the current HOME component and `launcherx disabled: 0|1`
-    tools/tv.sh home-take        # set-home-activity to TV Launcher, disable the stock launcher (launcherx), then home-status
-    tools/tv.sh home-restore     # re-enable launcherx, set-home-activity back to launcherx/.home.HomeActivity, then home-status
+    tools/tv.sh home-status      # prints the current HOME component, `launcherx disabled: 0|1` and `recovery disabled: 0|1`
+    tools/tv.sh home-take        # set-home-activity to TV Launcher, disable setupwraith's RecoveryActivity (component only) and the stock launcher (launcherx), then verify
+    tools/tv.sh home-restore     # re-enable launcherx and RecoveryActivity, set-home-activity back to launcherx/.home.HomeActivity, verify, then home-status
     tools/tv.sh idle-set <min>   # sets system screen_off_timeout to <min> minutes (integer >= 1) and prints it back (600000 = 10 min)
+
+Why two disables: Android ranks HOME candidates by intent-filter priority before it looks at the preferred (set-home-activity) choice. On this Chromecast launcherx is priority 2, the setup wizard's `com.google.android.tungsten.setupwraith/.RecoveryActivity` is 1, and TV Launcher is capped at 0, so both must be disabled for Home to reach us. Only that one setupwraith component is disabled, never the package. `home-take` verifies after disabling: if HOME does not then resolve to TV Launcher it runs the restore itself and exits 1. `recovery disabled` is read from `dumpsys package com.google.android.tungsten.setupwraith` (user 0's `disabledComponents`), because `pm list packages -d` only lists packages.
+
+Known, accepted loss while taken over: the long-press-Home quick-settings panel belongs to launcherx and goes away. TV Settings is still reachable from the top-bar Profile button (opens TV Settings' accounts/sync page, else TV Settings) and, via the app-details page, from Settings -> "Google TV Home...".
 
 `idle-set` only changes `system screen_off_timeout`; `secure sleep_timeout` is left alone.
 
