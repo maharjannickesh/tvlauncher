@@ -1,0 +1,11 @@
+#!/bin/bash
+# step <label> <shell cmd...>
+A=/private/tmp/claude-502/-Users-maharjannickesh/7ee63d87-5613-44e0-9fe6-26856f29fc6d/scratchpad/a
+L="$1"; shift
+echo "=== $L"
+echo "before: $($A shell dumpsys activity activities | grep -m1 topResumedActivity | tr -d '\r')"
+$A logcat -c
+$A shell "$@"
+sleep ${WAIT:-4}
+$A logcat -d -s HomeKey:I Home:I | grep -v 'beginning of'
+echo "after: $($A shell dumpsys activity activities | grep -m1 topResumedActivity | tr -d '\r')"

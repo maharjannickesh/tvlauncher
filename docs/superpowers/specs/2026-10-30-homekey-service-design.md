@@ -71,6 +71,17 @@ Nickesh's rules, unchanged: Welcome on boot and after ≥ 10 min asleep; Home on
 - README "Home button" section rewritten: how to enable (TV Settings path and `tools/tv.sh homekey-on`), short vs long press, boot behaviour as observed, the "nothing is disabled" statement, and the dead-route note with a pointer to the switch-over report. The "Why two disables" paragraph goes.
 - `2026-10-30-home-takeover-design.md`: a one-paragraph note at the top that §4–6 are superseded by this document and why.
 
+### 0. Physical-remote gate (author's call, reviewer question) — before anything else is built
+
+The spike only drove a virtual `uinput` remote. The first task of the plan is a 30-second gate on the physical remote: reset the TV's accessibility settings to baseline, install the spike build (branch `spike-homekey`, mode `split`) or the new service once it exists, `homekey-on`, and Nickesh presses Home short and long from YouTube. If a short press with the service bound still opens Google TV Home (the key never reached `onKeyEvent`), the epic stops there and the report says so; that outcome is a stop condition, not a documented limitation. Only when the physical remote passes does the rest get built.
+
+### 0b. Baseline and tooling (author's calls, reviewer questions)
+
+- The TV's state after the spike is unknown (service possibly still enabled in `split` mode, `accessibility_enabled` possibly 1, Wireless debugging off). The first device step of every task is `tools/tv.sh homekey-status`; the gate task resets to baseline (`settings delete secure enabled_accessibility_services`, `accessibility_enabled 0`) before the control press.
+- The spike's `uinput` scripts were recovered from the session scratchpad and committed under `tools/uinput/` with this document; `tools/tv.sh remote short|long` wraps them.
+- "Home button…" row fallback when `ACTION_ACCESSIBILITY_SETTINGS` does not resolve: toast "Open TV Settings → System → Accessibility → TV Launcher Home key", matching the existing precedent.
+- `HomeKeyState.isEnabled` normalises each entry of the colon-separated list with `ComponentName.unflattenFromString` and requires `accessibility_enabled == 1` as well.
+
 ### 5. Verification on the device (in order)
 
 1. Install; `tools/tv.sh homekey-status` shows off. Short press via `tools/tv.sh remote short` from YouTube with the service off → stock launcher (control).

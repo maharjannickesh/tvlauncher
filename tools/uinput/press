@@ -1,0 +1,5 @@
+#!/bin/bash
+# press <label> <scancode> <hold_ms>
+S=/private/tmp/claude-502/-Users-maharjannickesh/7ee63d87-5613-44e0-9fe6-26856f29fc6d/scratchpad
+$S/mk $2 $3 > $S/u.json; $S/a push $S/u.json /data/local/tmp/u.json >/dev/null
+$S/step "$1" "uinput /data/local/tmp/u.json"

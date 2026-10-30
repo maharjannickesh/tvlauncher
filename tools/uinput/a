@@ -1,0 +1,2 @@
+#!/bin/bash
+exec "$HOME/Library/Android/sdk/platform-tools/adb" -s 10.0.0.21:38949 "$@"
