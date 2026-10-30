@@ -1,6 +1,8 @@
 package com.nickesh.tvlauncher
 
 import android.os.Bundle
+import android.os.SystemClock
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.Crossfade
@@ -15,11 +17,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nickesh.tvlauncher.data.settings.Settings
+import com.nickesh.tvlauncher.ui.allapps.AllAppsScreen
+import com.nickesh.tvlauncher.ui.home.AppTile
 import com.nickesh.tvlauncher.ui.home.HomeScreen
 import com.nickesh.tvlauncher.ui.home.HomeViewModel
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import com.nickesh.tvlauncher.ui.welcome.WelcomeScreen
+import kotlin.math.max
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed interface Screen {
     data object Welcome : Screen
@@ -56,26 +63,51 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<Screen>(if (welcomeDone) Screen.Home else Screen.Welcome)
             }
             val homeViewModel = viewModel { HomeViewModel(container) }
-            val homeState by homeViewModel.state.collectAsStateWithLifecycle()
+            val launch = { tile: AppTile ->
+                if (!container.apps.launch(tile.packageName)) {
+                    Toast.makeText(this@MainActivity, "Can't open ${tile.label}", Toast.LENGTH_SHORT).show()
+                }
+            }
             TvLauncherTheme(accent = accent) {
                 Crossfade(targetState = screen, animationSpec = tween(400), label = "screen") { s ->
                     when (s) {
                         Screen.Welcome -> {
-                            // Task 6 replaces this fixed delay with the readiness gate + 4 s cap.
+                            // Readiness gate: apps loaded and the saved settings emitted (so the saved name
+                            // shows), capped at 4 s, never shorter than 1.2 s.
                             LaunchedEffect(Unit) {
-                                delay(1200)
+                                val start = SystemClock.elapsedRealtime()
+                                withTimeoutOrNull(4000) {
+                                    container.apps.ready.first { it }
+                                    container.settings.settings.first()
+                                }
+                                delay(max(0L, 1200L - (SystemClock.elapsedRealtime() - start)))
                                 welcomeDone = true
                                 screen = Screen.Home
                             }
                             WelcomeScreen(settings.name, accent, settings)
                         }
-                        else -> HomeScreen(
-                            state = homeState,
-                            onOpenAllApps = { screen = Screen.AllApps },
-                            onOpenSettings = { screen = Screen.Settings },
-                            onLaunch = { /* Task 6 */ },
-                            onAction = { /* Task 8 */ },
-                        )
+                        Screen.AllApps -> {
+                            val homeState by homeViewModel.state.collectAsStateWithLifecycle()
+                            val allApps by container.apps.apps.collectAsStateWithLifecycle()
+                            AllAppsScreen(
+                                apps = allApps,
+                                settings = homeState.settings,
+                                accent = homeState.accent,
+                                onLaunch = launch,
+                                onBack = { screen = Screen.Home },
+                            )
+                        }
+                        else -> {
+                            // Collected here, not at the root, so the per-second ticker only recomposes Home.
+                            val homeState by homeViewModel.state.collectAsStateWithLifecycle()
+                            HomeScreen(
+                                state = homeState,
+                                onOpenAllApps = { screen = Screen.AllApps },
+                                onOpenSettings = { screen = Screen.Settings },
+                                onLaunch = launch,
+                                onAction = { /* Task 8 */ },
+                            )
+                        }
                     }
                 }
             }

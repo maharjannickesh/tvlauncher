@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -48,29 +49,39 @@ fun AppsRow(
         Text("Your apps", color = Color.White.copy(alpha = 0.9f), fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 26.spx())
         Row(horizontalArrangement = Arrangement.spacedBy(22.dpx()), verticalAlignment = Alignment.Top) {
             apps.forEachIndexed { i, app ->
-                Tile(
-                    label = app.label,
-                    tone = app.tone,
-                    accent = accent,
-                    onClick = { onLaunch(app) },
-                    modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
-                ) {
-                    when {
-                        app.banner != null -> Image(app.banner, app.label, Modifier.size(172.dpx(), 104.dpx()), contentScale = ContentScale.Crop)
-                        app.icon != null -> Image(app.icon, app.label, Modifier.size(64.dpx()))
-                        else -> Text(
-                            app.label.take(1),
-                            style = TextStyle(letterSpacing = (-1).spx()),
-                            fontFamily = Outfit,
-                            fontWeight = FontWeight.W600,
-                            fontSize = 40.spx(),
-                        )
-                    }
+                key(app.packageName) {
+                    AppTileButton(
+                        app = app,
+                        accent = accent,
+                        onClick = { if (app.packageName.isEmpty()) onOpenAllApps() else onLaunch(app) },
+                        modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
+                    )
                 }
             }
-            Tile("All apps", Color(0x1FFFFFFF), accent, onOpenAllApps) {
-                Icon(Icons.Grid, null, Modifier.size(36.dpx()), tint = Color.White)
-            }
+        }
+    }
+}
+
+/** One launcher tile: banner (or icon, or letter fallback) above its label. The synthetic "" package shows the Grid icon. */
+@Composable
+fun AppTileButton(
+    app: AppTile,
+    accent: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Tile(app.label, app.tone, accent, onClick, modifier) {
+        when {
+            app.packageName.isEmpty() -> Icon(Icons.Grid, null, Modifier.size(36.dpx()), tint = Color.White)
+            app.banner != null -> Image(app.banner, app.label, Modifier.size(172.dpx(), 104.dpx()), contentScale = ContentScale.Crop)
+            app.icon != null -> Image(app.icon, app.label, Modifier.size(64.dpx()))
+            else -> Text(
+                app.label.take(1),
+                style = TextStyle(letterSpacing = (-1).spx()),
+                fontFamily = Outfit,
+                fontWeight = FontWeight.W600,
+                fontSize = 40.spx(),
+            )
         }
     }
 }

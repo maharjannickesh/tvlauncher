@@ -7,6 +7,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
+import com.nickesh.tvlauncher.data.apps.AppsRepository
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
 
 class AppContainer(val context: Context) {
@@ -16,4 +17,5 @@ class AppContainer(val context: Context) {
             corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
         ) { context.preferencesDataStoreFile("settings") }
     val settings = SettingsRepository(settingsStore)
+    val apps = AppsRepository(context)
 }

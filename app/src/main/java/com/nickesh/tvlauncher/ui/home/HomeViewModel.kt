@@ -7,6 +7,8 @@ import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
 import com.nickesh.tvlauncher.data.settings.Settings
 import com.nickesh.tvlauncher.data.settings.TempUnit
+import com.nickesh.tvlauncher.domain.apps.AppOrdering
+import com.nickesh.tvlauncher.domain.apps.InstalledApp
 import com.nickesh.tvlauncher.domain.clock.ClockMath
 import com.nickesh.tvlauncher.domain.clock.ClockSnapshot
 import com.nickesh.tvlauncher.domain.clock.TimeText
@@ -76,16 +78,16 @@ internal fun placeholderWeather(homeDate: ZonedDateTime, settings: Settings): We
     return WeatherUi(settings.weatherCity, t(58), "Partly cloudy", t(63), t(47), WeatherKind.PARTLY, forecast)
 }
 
-/** Static stand-in until Task 6 (installed-app resolution). */
-internal fun placeholderApps(): List<AppTile> = listOf(
-    "YouTube" to 0xFF3B2F52, "Netflix" to 0xFF4A2B36, "Prime Video" to 0xFF233A4D,
-    "Disney+" to 0xFF24315A, "Spotify" to 0xFF1E3F36, "Plex" to 0xFF423823,
-    "Photos" to 0xFF2C3D4A, "Browser" to 0xFF343844,
-).map { (label, tone) -> AppTile("placeholder.$label", label, null, null, Color(tone)) }
+private val AllAppsTile = AppTile("", "All apps", null, null, Color(0x1FFFFFFF))
+
+/** Favourites first, then alphabetical, capped at 8, plus the trailing synthetic "All apps" tile. */
+internal fun homeRow(all: List<AppTile>, favourites: List<String>): List<AppTile> {
+    val byPackage = all.associateBy { it.packageName }
+    val ordered = AppOrdering.order(all.map { InstalledApp(it.packageName, it.label) }, favourites, 8)
+    return ordered.mapNotNull { byPackage[it.packageName] } + AllAppsTile
+}
 
 class HomeViewModel(container: AppContainer) : ViewModel() {
-    private val apps = placeholderApps()
-
     private val ticker = flow {
         while (true) {
             val now = Instant.now()
@@ -94,7 +96,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
         }
     }
 
-    private fun build(settings: Settings, now: Instant): HomeUiState {
+    private fun build(settings: Settings, allApps: List<AppTile>, now: Instant): HomeUiState {
         val home = now.atZone(ZoneId.of(settings.homeZone))
         return HomeUiState(
             greeting = ClockMath.greeting(home.hour),
@@ -103,13 +105,13 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
             dateLine = ClockMath.dateLine(home),
             weather = placeholderWeather(home, settings),
             clocks = settings.clocks.map { ClockMath.snapshot(it, home, now, settings.use24h) },
-            apps = apps,
+            apps = homeRow(allApps, settings.favourites),
             accent = Color(settings.accentArgb),
             settings = settings,
         )
     }
 
     val state: StateFlow<HomeUiState> =
-        combine(container.settings.settings, ticker, ::build)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(Settings(), Instant.now()))
+        combine(container.settings.settings, container.apps.apps, ticker, ::build)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(Settings(), container.apps.apps.value, Instant.now()))
 }
