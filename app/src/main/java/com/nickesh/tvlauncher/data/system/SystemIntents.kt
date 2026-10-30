@@ -5,6 +5,7 @@ import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.Settings
 import android.speech.RecognizerIntent
 import android.util.Log
@@ -43,6 +44,21 @@ class SystemIntents(private val context: Context) {
         return false
     }
 
+    /** True when the stock launcher package exists, including when it is disabled. */
+    fun stockHomeInstalled(): Boolean =
+        runCatching { context.packageManager.getApplicationInfo(STOCK_HOME_PACKAGE, 0) }.isSuccess
+
+    /** Opens the system app-details page of the stock launcher (where Enable lives). */
+    fun openStockHomeDetails(): Boolean = try {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$STOCK_HOME_PACKAGE"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        true
+    } catch (_: ActivityNotFoundException) {
+        false
+    }
+
     private fun resolves(intent: Intent): Boolean =
         context.packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null
 
@@ -52,7 +68,8 @@ class SystemIntents(private val context: Context) {
         Intent(Intent.ACTION_VOICE_COMMAND),
     )
 
-    private companion object {
-        const val TAG = "SystemIntents"
+    companion object {
+        const val STOCK_HOME_PACKAGE = "com.google.android.apps.tv.launcherx"
+        private const val TAG = "SystemIntents"
     }
 }

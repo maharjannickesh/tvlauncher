@@ -131,6 +131,12 @@ class MainActivity : ComponentActivity() {
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
                                 onBack = { screen = Screen.Home },
                                 focusBackgroundRow = cameFromBackground,
+                                stockHomeInstalled = remember { container.systemIntents.stockHomeInstalled() },
+                                onOpenStockHome = {
+                                    if (!container.systemIntents.openStockHomeDetails()) {
+                                        Toast.makeText(this@MainActivity, "Open TV Settings → Apps → See all apps → Google TV Home", Toast.LENGTH_LONG).show()
+                                    }
+                                },
                             )
                         }
                         Screen.Background -> {
