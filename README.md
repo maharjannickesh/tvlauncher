@@ -20,7 +20,7 @@ System Java is 27 on this Mac and Gradle needs 21:
 
     export JAVA_HOME=$HOME/Library/Java/JavaVirtualMachines/jdk-21.0.12.1+1/Contents/Home
 
-- Build: `./gradlew assembleDebug`
+- Build: `./gradlew assembleDebug` (`-Pprobe=true` builds a second installable copy, id suffix `.probe`, for focus-on-uninstall checks)
 - Tests: `./gradlew :app:testDebugUnitTest`; lint: `./gradlew lintDebug`
 - Connect, install and launch on the TV (wireless adb, 10.0.0.21): `tools/tv.sh connect && tools/tv.sh install`
 - Screenshot to `shots/<name>.png` (git-ignored): `tools/tv.sh shot <name>`

@@ -12,13 +12,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -43,18 +46,42 @@ fun AppsRow(
     onOpenAllApps: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val first = remember { FocusRequester() }
-    LaunchedEffect(apps.firstOrNull()?.packageName) { runCatching { first.requestFocus() } }
+    val requesters = remember { mutableMapOf<String, FocusRequester>() }
+    fun requesterFor(pkg: String) = requesters.getOrPut(pkg) { FocusRequester() }
+    var focusedIndex by remember { mutableIntStateOf(-1) } // -1 = the row holds no focus
+    val latestApps by rememberUpdatedState(apps)
+    var previous by remember { mutableStateOf<List<String>>(emptyList()) }
+    LaunchedEffect(apps) {
+        val pkgs = apps.map { it.packageName }
+        val old = previous
+        previous = pkgs
+        if (old.isEmpty()) {
+            runCatching { requesterFor(pkgs.first()).requestFocus() } // first composition only
+        } else {
+            val idx = focusedIndex
+            // The focused tile left composition, so Compose cleared focus: hand it to the neighbour.
+            if (idx in old.indices && old[idx] !in pkgs && pkgs.isNotEmpty()) {
+                runCatching { requesterFor(pkgs[minOf(idx, pkgs.lastIndex)]).requestFocus() }
+            }
+        }
+        requesters.keys.retainAll(pkgs.toSet())
+    }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(18.dpx())) {
         Text("Your apps", color = Color.White.copy(alpha = 0.9f), fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 26.spx())
-        Row(horizontalArrangement = Arrangement.spacedBy(22.dpx()), verticalAlignment = Alignment.Top) {
+        Row(Modifier.focusRestorer(), horizontalArrangement = Arrangement.spacedBy(22.dpx()), verticalAlignment = Alignment.Top) {
             apps.forEachIndexed { i, app ->
                 key(app.packageName) {
                     AppTileButton(
                         app = app,
                         accent = accent,
                         onClick = { if (app.packageName.isEmpty()) onOpenAllApps() else onLaunch(app) },
-                        modifier = if (i == 0) Modifier.focusRequester(first) else Modifier,
+                        modifier = Modifier
+                            .focusRequester(requesterFor(app.packageName))
+                            .onFocusChanged {
+                                if (it.isFocused) focusedIndex = i
+                                // Losing focus because the tile left the list keeps the index (the effect below needs it).
+                                else if (focusedIndex == i && latestApps.any { a -> a.packageName == app.packageName }) focusedIndex = -1
+                            },
                     )
                 }
             }

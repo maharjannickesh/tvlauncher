@@ -17,6 +17,16 @@ android {
         versionName = "0.1.0"
     }
 
+    buildTypes {
+        debug {
+            // `-Pprobe=true` builds a second installable copy (used to prove focus on uninstall).
+            if (project.hasProperty("probe")) applicationIdSuffix = ".probe"
+        }
+    }
+
+    // Probe label "AAA Probe" sorts first so the copy lands at the start of the home row.
+    if (project.hasProperty("probe")) sourceSets.getByName("debug").res.srcDir("src/probe/res")
+
     buildFeatures {
         compose = true
     }
