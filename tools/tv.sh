@@ -34,9 +34,10 @@ home_status() {
   local s; s="$(serial)"
   [ -n "$s" ] || { echo "TV not found" >&2; return 1; }
   "$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1
-  local dis; dis="$("$ADB" -s "$s" shell pm list packages -d 2>&1)"
-  if [ -z "$dis" ]; then echo "launcherx disabled: unknown" >&2; return 1; fi
-  if printf '%s\n' "$dis" | tr -d '\r' | grep -qx "package:$STOCK_PKG"; then echo "launcherx disabled: 1"; else echo "launcherx disabled: 0"; fi
+  local dis; dis="$("$ADB" -s "$s" shell pm list packages -d 2>/dev/null)" || { echo "launcherx disabled: unknown" >&2; return 1; }
+  dis="$(printf '%s' "$dis" | tr -d '\r')"
+  if [ -n "$dis" ] && printf '%s\n' "$dis" | grep -qv '^package:'; then echo "launcherx disabled: unknown" >&2; return 1; fi
+  if printf '%s\n' "$dis" | grep -qx "package:$STOCK_PKG"; then echo "launcherx disabled: 1"; else echo "launcherx disabled: 0"; fi
 }
 
 cmd="${1:-}"; shift || true
