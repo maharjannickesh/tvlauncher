@@ -25,4 +25,8 @@ class FlipDigitsTest {
     @Test fun noon_12h() {
         assertEquals(FlipDigits(listOf("12", "05"), "PM"), FlipDigitsCalc.from(at(12, 5), use24h = false, showSeconds = false))
     }
+
+    @Test fun justAfterMidnight_12h() {
+        assertEquals(FlipDigits(listOf("12", "05"), "AM"), FlipDigitsCalc.from(at(0, 5), use24h = false, showSeconds = false))
+    }
 }
