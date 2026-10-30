@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.TvLauncher" parent="@android:style/Theme.NoTitleBar.Fullscreen">
+        <item name="android:windowBackground">@drawable/window_background</item>
+        <!-- API 31+ draws its own splash; keep it on-brand instead of the default flat colour. -->
+        <item name="android:windowSplashScreenBackground">#16213F</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher</item>
+    </style>
+</resources>
