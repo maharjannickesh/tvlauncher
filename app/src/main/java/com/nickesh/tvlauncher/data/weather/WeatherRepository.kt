@@ -172,16 +172,19 @@ class WeatherRepository(
 object WeatherFreshness {
     const val TTL_MS = 30 * 60_000L
 
-    /** Under the TTL, same unit, and the same place: coordinates within 1e-6 when both sides have them, else the name (any case). */
+    /** Under the TTL, same unit, and the same place: coordinates within 1e-6 when both sides have them, the name (any case) when neither does, never when only one does. */
     fun isFresh(s: WeatherSnapshot?, place: Place, unit: TempUnit, nowMs: Long): Boolean =
         s != null && s.unit == unit && nowMs - s.fetchedAtEpochMs < TTL_MS && samePlace(s, place)
 
-    internal fun samePlace(s: WeatherSnapshot, place: Place): Boolean =
-        if (s.lat != null && s.lon != null && place.lat != null && place.lon != null) {
-            abs(s.lat - place.lat) < 1e-6 && abs(s.lon - place.lon) < 1e-6
-        } else {
-            s.city.equals(place.name, ignoreCase = true)
+    fun samePlace(s: WeatherSnapshot, place: Place): Boolean {
+        val snapHas = s.lat != null && s.lon != null
+        val placeHas = place.lat != null && place.lon != null
+        return when {
+            snapHas && placeHas -> abs(s.lat!! - place.lat!!) < 1e-6 && abs(s.lon!! - place.lon!!) < 1e-6
+            snapHas != placeHas -> false // mixed: one side was geocoded by name, the other picked — never trust the name
+            else -> s.city.equals(place.name, ignoreCase = true)
         }
+    }
 
     const val RETRY_MS = 90_000L
 

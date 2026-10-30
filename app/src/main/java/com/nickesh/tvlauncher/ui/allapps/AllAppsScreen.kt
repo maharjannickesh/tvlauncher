@@ -86,6 +86,9 @@ fun AllAppsScreen(
         val gone = focusedPkg
         if (gone != null && gone !in pkgs && pkgs.isNotEmpty()) {
             val idx = old.indexOf(gone).coerceAtLeast(0)
+            // Forget the gone tile first: the neighbour's onFocusChanged (which may fire inside requestFocus) sets it
+            // again if the hand-off lands; if it does not, no stale package lingers.
+            focusedPkg = null
             runCatching { requesters.getOrPut(pkgs[minOf(idx, pkgs.lastIndex)]) { FocusRequester() }.requestFocus() }
         }
         requesters.keys.retainAll(pkgs.toSet())

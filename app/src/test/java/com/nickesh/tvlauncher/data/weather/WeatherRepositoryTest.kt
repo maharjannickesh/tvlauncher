@@ -184,6 +184,11 @@ class WeatherRepositoryTest {
         assertTrue(WeatherFreshness.isFresh(tokyo, Place("clock0", "Tokyo", "Tokyo", 35.0, 139.0), TempUnit.F, now))
         assertTrue(WeatherFreshness.isFresh(tokyo.copy(lat = null, lon = null), Place("clock0", "tokyo", "tokyo", null, null), TempUnit.F, now))
     }
+    @Test fun samePlace_mixedCoordinates_neverMatchesByName() {
+        val tokyo = snap(at = now - 1 * min).copy(city = "Tokyo", lat = 35.0, lon = 139.0)
+        assertFalse(WeatherFreshness.samePlace(tokyo, Place("clock0", "Tokyo", "Tokyo", null, null)))
+        assertFalse(WeatherFreshness.samePlace(tokyo.copy(lat = null, lon = null), Place("clock0", "Tokyo", "Tokyo", 35.0, 139.0)))
+    }
 
     @Test fun legacyWeatherCity_isHomeQuery() {
         val places = Places.fromSettings(Settings(homeCity = "Columbus", legacyWeatherCity = "Columbus, OH"))

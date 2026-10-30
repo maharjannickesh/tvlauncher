@@ -29,7 +29,7 @@ import java.time.Instant
 import com.nickesh.tvlauncher.data.weather.Places
 import com.nickesh.tvlauncher.data.weather.WeatherFreshness
 import java.time.LocalDate
-import java.time.ZoneId
+import com.nickesh.tvlauncher.domain.clock.ZoneIds
 import kotlinx.coroutines.delay
 
 /** Flip-clock screensaver. Reads settings and the cached weather only; never touches the network. */
@@ -63,12 +63,16 @@ class ScreensaverService : DreamService(), LifecycleOwner, SavedStateRegistryOwn
             setContent {
                 val settings by container.settings.settings.collectAsState(null)
                 val zoneId = settings?.homeZone
-                val weather by produceState<WeatherUi?>(null, zoneId) {
+                val homePlace = settings?.let { Places.fromSettings(it)[0] }
+                val unit = settings?.unit
+                val weather by produceState<WeatherUi?>(null, zoneId, homePlace, unit) {
                     // Re-read the cache every 30 min while dreaming (the Home loop refreshes it), and again
-                    // just after local midnight so the day columns roll over.
+                    // just after local midnight so the day columns roll over. A cache for another place or unit shows nothing.
                     while (true) {
                         value = zoneId?.let { z ->
-                            container.weatherCache.read(Places.HOME)?.let { container.weather.toUi(it, LocalDate.now(ZoneId.of(z))) }
+                            container.weatherCache.read(Places.HOME)
+                                ?.takeIf { homePlace != null && it.unit == unit && WeatherFreshness.samePlace(it, homePlace) }
+                                ?.let { container.weather.toUi(it, LocalDate.now(ZoneIds.safe(z))) }
                         }
                         delay(zoneId?.let { WeatherFreshness.sleepMs(System.currentTimeMillis(), it, ok = true) } ?: WeatherFreshness.TTL_MS)
                     }
@@ -82,7 +86,7 @@ class ScreensaverService : DreamService(), LifecycleOwner, SavedStateRegistryOwn
                 }
                 settings?.let { s ->
                     val instant = Instant.ofEpochMilli(nowMs)
-                    val home = instant.atZone(ZoneId.of(s.homeZone))
+                    val home = instant.atZone(ZoneIds.safe(s.homeZone))
                     val clocks = s.clocks.map { ClockMath.snapshot(it, home, instant, s.use24h) }
                     TvLauncherTheme(accent = Color(s.accentArgb)) {
                         ScreensaverContent(s, weather, clocks, home)
