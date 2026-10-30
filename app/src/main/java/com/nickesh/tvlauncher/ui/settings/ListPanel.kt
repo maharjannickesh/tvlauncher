@@ -11,10 +11,15 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -46,7 +51,17 @@ fun ListPanel(
     val start = selectedIndex.coerceIn(0, (items.size - 1).coerceAtLeast(0))
     val state = rememberLazyListState(initialFirstVisibleItemIndex = (start - 2).coerceAtLeast(0))
     val focus = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+    var focused by remember { mutableStateOf(false) }
+    // Lazy items attach a frame or more after the panel: make sure the target is composed, then retry per frame.
+    LaunchedEffect(Unit) {
+        repeat(20) {
+            if (focused || items.isEmpty()) return@LaunchedEffect
+            if (state.layoutInfo.visibleItemsInfo.none { it.index == start }) state.scrollToItem(start)
+            withFrameNanos { }
+            runCatching { focus.requestFocus() }
+            withFrameNanos { }
+        }
+    }
     GlassCard(modifier.fillMaxSize()) {
         Column(Modifier.fillMaxSize().padding(top = 28.dpx(), start = 20.dpx(), end = 20.dpx())) {
             Text(
@@ -69,7 +84,7 @@ fun ListPanel(
                     }
                     SettingRow(
                         label,
-                        modifier = if (i == start) edge.focusRequester(focus) else edge,
+                        modifier = if (i == start) edge.focusRequester(focus).onFocusChanged { if (it.isFocused) focused = true } else edge,
                         onClick = { onPick(i) },
                     ) { if (i == selectedIndex) ValueText("✓") }
                 }

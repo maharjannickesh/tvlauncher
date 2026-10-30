@@ -152,7 +152,9 @@ class MainActivity : ComponentActivity() {
                                 lifecycleOwner.lifecycle.addObserver(obs)
                                 onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
                             }
-                            LaunchedEffect(Unit) { if (draft == null) openDraft(cur) }
+                            // Recreation (process death / config change) lands here with no draft: seed from the store, never from
+                            // the Settings() placeholder, so Save cannot write defaults. The screen stays blank until then.
+                            LaunchedEffect(Unit) { if (draft == null) openDraft(container.settings.settings.first()) }
                             val d = draft
                             if (d != null) SettingsScreen(
                                 saved = cur,
@@ -161,14 +163,17 @@ class MainActivity : ComponentActivity() {
                                 onDraft = { draft = it },
                                 onSave = {
                                     val toSave = d.settings
-                                    lifecycleScope.launch { container.settings.update { SettingsDraftRules.merge(it, toSave) } }
                                     val minutes = d.screensaverAfterMinutes
-                                    if (minutes != null && minutes != savedIdleMinutes &&
-                                        !IdleTimer.writeIdleMinutes(this@MainActivity, minutes)
-                                    ) {
-                                        Toast.makeText(this@MainActivity, "Screensaver timer needs 'Modify system settings' — tap the row to grant", Toast.LENGTH_LONG).show()
+                                    val idleBefore = savedIdleMinutes
+                                    lifecycleScope.launch {
+                                        container.settings.update { SettingsDraftRules.merge(it, toSave) }
+                                        if (minutes != null && minutes != idleBefore &&
+                                            !IdleTimer.writeIdleMinutes(this@MainActivity, minutes)
+                                        ) {
+                                            Toast.makeText(this@MainActivity, "Screensaver timer needs 'Modify system settings' — tap the row to grant", Toast.LENGTH_LONG).show()
+                                        }
+                                        screen = Screen.Home
                                     }
-                                    screen = Screen.Home
                                 },
                                 onLeave = { screen = Screen.Home },
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
@@ -182,7 +187,7 @@ class MainActivity : ComponentActivity() {
                                 idleWritable = idleWritable,
                                 onOpenIdlePermission = {
                                     if (!IdleTimer.openWriteSettingsPage(this@MainActivity)) {
-                                        Toast.makeText(this@MainActivity, "Open TV Settings → Apps → Special app access → Modify system settings → TV Launcher", Toast.LENGTH_LONG).show()
+                                        Toast.makeText(this@MainActivity, "Grant 'Modify system settings' over adb: tools/tv.sh idle-perm", Toast.LENGTH_LONG).show()
                                     }
                                 },
                             )
