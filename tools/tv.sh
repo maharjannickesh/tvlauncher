@@ -58,6 +58,31 @@ case "$cmd" in
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
     "$ADB" -s "$s" shell service call dreams 2 >/dev/null ;; # IDreamManager.awaken()
+  home-status)
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1
+    echo "launcherx disabled: $("$ADB" -s "$s" shell pm list packages -d | grep -c launcherx)" ;;
+  home-take)
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell cmd package set-home-activity com.nickesh.tvlauncher/.MainActivity
+    "$ADB" -s "$s" shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
+    "$0" home-status ;;
+  home-restore)
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell pm enable com.google.android.apps.tv.launcherx
+    "$ADB" -s "$s" shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity
+    "$0" home-status ;;
+  idle-set)
+    m="${1:-}"
+    case "$m" in ''|*[!0-9]*) echo "usage: tv.sh idle-set <minutes>  (integer >= 1)" >&2; exit 2 ;; esac
+    [ "$m" -ge 1 ] || { echo "usage: tv.sh idle-set <minutes>  (integer >= 1)" >&2; exit 2; }
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell settings put system screen_off_timeout $((m*60000))
+    "$ADB" -s "$s" shell settings get system screen_off_timeout ;;
   *)
-    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop}" >&2; exit 2 ;;
+    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop|home-status|home-take|home-restore|idle-set <minutes>}" >&2; exit 2 ;;
 esac

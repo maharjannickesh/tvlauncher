@@ -1,6 +1,6 @@
 # TV Launcher
 
-A personal home screen for a Chromecast with Google TV (Android 14, API 34, armeabi-v7a, 1920x1080 render surface). It replaces the busy stock Google TV home with a calm, glassy dashboard. v1 runs as a normal app launched from the stock launcher; it does not take over the Home button.
+A personal home screen for a Chromecast with Google TV (Android 14, API 34, armeabi-v7a, 1920x1080 render surface). It replaces the busy stock Google TV home with a calm, glassy dashboard. It runs as a normal app, and can optionally become the Home button's target (see [Home button](#home-button)); the stock launcher stays installed and is only disabled by an explicit `tools/tv.sh home-take`.
 
 Built with Kotlin and Jetpack Compose for TV (`androidx.tv:tv-material`), DataStore, OkHttp (Open-Meteo weather) and kotlinx-serialization. Package `com.nickesh.tvlauncher`. The design source is in `tv-launcher-design/` and the v1 design doc is `docs/superpowers/specs/2026-10-29-tv-launcher-v1-design.md`.
 
@@ -24,6 +24,7 @@ System Java is 27 on this Mac and Gradle needs 21:
 - Tests: `./gradlew :app:testDebugUnitTest`; lint: `./gradlew lintDebug`
 - Connect, install and launch on the TV (wireless adb, 10.0.0.21): `tools/tv.sh connect && tools/tv.sh install`
 - Screenshot to `shots/<name>.png` (git-ignored): `tools/tv.sh shot <name>`
+- Home-button switch-over and screen-off timeout: `tools/tv.sh home-status | home-take | home-restore | idle-set <minutes>` (see below)
 - If a second adb device is attached, pass `-s <serial>` to raw adb; `tools/tv.sh` picks the 10.0.0.21 serial itself.
 
 ## Screensaver
@@ -48,9 +49,27 @@ Measured 2026-10-29 with `am start -W` after a force-stop:
 - Welcome to settled Home: the splash holds at least 1.2 s after the first frame, then cross-fades for 400 ms, so Home is up roughly 1.6 s after the first frame (about 5 to 6 s after launch). Screenshot polling on this device takes 1 to 2 s per capture, so finer timing was not measurable.
 - The "within about 2 s" goal in the design is not met by the debug build on this hardware. A release (minified, R8) build has not been measured.
 
+## Home button
+
+The app declares the HOME intent filter and replays the Welcome splash after at least 10 minutes of standby (matches the TV's "Screen saver -> When to start"; see `docs/superpowers/specs/2026-10-30-home-takeover-design.md`). Switching the Home key over is done from the Mac over adb:
+
+    tools/tv.sh home-status      # prints the current HOME component and `launcherx disabled: 0|1`
+    tools/tv.sh home-take        # set-home-activity to TV Launcher, disable the stock launcher (launcherx), then home-status
+    tools/tv.sh home-restore     # re-enable launcherx, set-home-activity back to launcherx/.home.HomeActivity, then home-status
+    tools/tv.sh idle-set <min>   # sets system screen_off_timeout to <min> minutes (integer >= 1) and prints it back (600000 = 10 min)
+
+`idle-set` only changes `system screen_off_timeout`; `secure sleep_timeout` is left alone.
+
+**Stop rule:** if after `home-take` the screen goes black, the app crashes, or the Home key does nothing, run `tools/tv.sh home-restore` straight away.
+
+**Remote-only restore** (no Mac): in TV Launcher, Settings -> "Google TV Home..." opens the stock launcher's app-details page. If the page offers Enable, press it. Note: while the launcher is enabled the page shows no Enable/Disable control, so this path only helps when it is disabled and the page offers Enable. Uninstalling TV Launcher also returns Home to the stock launcher once that is enabled again.
+
+**Wireless debugging turns itself off on standby; keep Stay awake on** (Developer options) so adb stays reachable, otherwise `home-restore` may not be possible after the TV sleeps.
+
+Debug builds accept `-PwelcomeReplayMs=<ms>` (for example `./gradlew installDebug -PwelcomeReplayMs=20000`) to shorten the Welcome-replay standby threshold for testing.
+
 ## v2 backlog
 
-- Home-button takeover (add the `HOME` category and disable `com.google.android.apps.tv.launcherx` over adb).
 - Google Photos Picker backgrounds (QR plus device-code OAuth; needs a Google Cloud OAuth client).
 - Rearrange the apps row (and a favourites editor).
 - Snow and storm weather icons (both map to rain in v1).
