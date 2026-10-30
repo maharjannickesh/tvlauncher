@@ -65,7 +65,7 @@ Enable it in TV Settings -> System -> Accessibility -> TV Launcher Home key (the
 - Long press (1 s or more): opens Google TV's quick-settings dashboard (`GLOBAL_ACTION_NOTIFICATIONS`). A long press is consumed even if that call returns false (it is logged as `HomeKey`), so the dashboard may occasionally not appear.
 - If launching our Home fails, the press is let through to Google TV.
 - Caveat: `am force-stop com.nickesh.tvlauncher` makes Android switch the service off (a plain reinstall does not). Re-run `tools/tv.sh homekey-on` or re-enable it in TV Settings.
-- Boot: see below, filled after the reboot check.
+- Boot: Google TV's launcher shows first, then about 30 s later, once the service binds, it opens TV Launcher's Home on its own (observed 2026-10-30). That launch only happens within 90 s of boot (measured with `elapsedRealtime`), so it never fires on a standby wake or when the service is re-enabled later.
 
 Why not disable the stock launcher? That route cannot work on this Chromecast: launcherx has HOME priority 2, setupwraith's `RecoveryActivity` has 1 and ours is capped at 0, the shell cannot disable that component, and it self-heals. Details: `docs/superpowers/reports/takeover-switchover.md`. The physical-remote check that selected the service approach is in `docs/superpowers/reports/homekey-gate.md`.
 
