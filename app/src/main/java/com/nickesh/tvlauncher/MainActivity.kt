@@ -127,13 +127,24 @@ class MainActivity : ComponentActivity() {
                         }
                         Screen.Settings -> {
                             val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
+                            var homeKeyOn by remember { mutableStateOf(HomeKeyState.read(this@MainActivity)) }
+                            // Back from the Accessibility page only resumes this activity; re-read there.
+                            androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
+                                val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                                    if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                                        homeKeyOn = HomeKeyState.read(this@MainActivity)
+                                    }
+                                }
+                                lifecycleOwner.lifecycle.addObserver(obs)
+                                onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+                            }
                             SettingsScreen(
                                 settings = cur,
                                 onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
                                 onBack = { screen = Screen.Home },
                                 focusBackgroundRow = cameFromBackground,
-                                homeKeyEnabled = remember { HomeKeyState.read(this@MainActivity) },
+                                homeKeyEnabled = homeKeyOn,
                                 onOpenHomeKey = {
                                     if (!container.systemIntents.openAccessibilitySettings()) {
                                         Toast.makeText(this@MainActivity, "Open TV Settings → System → Accessibility → TV Launcher Home key", Toast.LENGTH_LONG).show()

@@ -55,8 +55,8 @@ An accessibility service, **TV Launcher Home key** (`HomeKeyService`), makes the
 
 Enable it in TV Settings -> System -> Accessibility -> TV Launcher Home key (the Settings row "Home button... On/Off" opens that page), or from the Mac:
 
-    tools/tv.sh homekey-on       # adds the service to enabled_accessibility_services and turns accessibility on
-    tools/tv.sh homekey-off      # removes it
+    tools/tv.sh homekey-on       # appends the service to enabled_accessibility_services (keeps other services) and turns accessibility on
+    tools/tv.sh homekey-off      # removes only our entry; turns accessibility off only if no other service remains
     tools/tv.sh homekey-status   # on/off and whether the service is bound
     tools/tv.sh remote short|long   # press Home on a uinput virtual remote (short, or held for 1+ s)
     tools/tv.sh idle-set <min>   # sets system screen_off_timeout to <min> minutes (600000 = 10 min)

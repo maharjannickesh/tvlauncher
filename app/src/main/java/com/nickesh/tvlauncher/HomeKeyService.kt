@@ -21,7 +21,9 @@ class HomeKeyService : AccessibilityService() {
     private var pendingDownMs: Long? = null
 
     override fun onServiceConnected() {
-        serviceInfo = serviceInfo.apply { flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS }
+        serviceInfo?.let { info ->
+            serviceInfo = info.apply { flags = flags or AccessibilityServiceInfo.FLAG_REQUEST_FILTER_KEY_EVENTS }
+        }
         val uptime = SystemClock.elapsedRealtime()
         Log.i(TAG, "connected uptime=$uptime")
         if (uptime < BOOT_WINDOW_MS) openHome("boot")
@@ -32,7 +34,7 @@ class HomeKeyService : AccessibilityService() {
         return when (event.action) {
             KeyEvent.ACTION_DOWN -> {
                 val pending = pendingDownMs
-                if (pending != null && event.eventTime - pending > STALE_DOWN_MS) {
+                if (pending != null && event.repeatCount == 0 && event.eventTime - pending > STALE_DOWN_MS) {
                     Log.i(TAG, "stale pending DOWN (${event.eventTime - pending} ms) → fresh decision")
                     decision = HomeKeyDecision()
                     pendingDownMs = null
