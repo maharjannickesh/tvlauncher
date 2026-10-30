@@ -37,6 +37,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -56,19 +57,39 @@ fun SettingRow(
     onRight: (() -> Unit)? = null,
     trailing: @Composable () -> Unit,
 ) {
+    RowSurface(
+        modifier.onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when {
+                e.key == Key.DirectionLeft && onLeft != null -> { onLeft(); true }
+                e.key == Key.DirectionRight && onRight != null -> { onRight(); true }
+                else -> false
+            }
+        },
+        onClick = onClick,
+    ) {
+        Row(
+            Modifier.fillMaxWidth().height(72.dpx()).padding(horizontal = 28.dpx()),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(label, color = Color.White, fontFamily = Outfit, fontWeight = FontWeight.W400, fontSize = 26.spx())
+            trailing()
+        }
+    }
+}
+
+/** The focusable glass surface every settings row shares (fill width, fixed [height], focus border/scale/glow). */
+@Composable
+fun RowSurface(
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+    height: Dp = 72.dpx(),
+    content: @Composable () -> Unit,
+) {
     Surface(
         onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(72.dpx())
-            .onPreviewKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when {
-                    e.key == Key.DirectionLeft && onLeft != null -> { onLeft(); true }
-                    e.key == Key.DirectionRight && onRight != null -> { onRight(); true }
-                    else -> false
-                }
-            },
+        modifier = modifier.fillMaxWidth().height(height),
         shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(18.dpx())),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x14FFFFFF),
@@ -82,16 +103,7 @@ fun SettingRow(
             focusedBorder = Border(BorderStroke(3.dpx(), Color.White), shape = RoundedCornerShape(18.dpx())),
         ),
         glow = ClickableSurfaceDefaults.glow(focusedGlow = focusGlow()),
-    ) {
-        Row(
-            Modifier.fillMaxWidth().height(72.dpx()).padding(horizontal = 28.dpx()),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(label, color = Color.White, fontFamily = Outfit, fontWeight = FontWeight.W400, fontSize = 26.spx())
-            trailing()
-        }
-    }
+    ) { content() }
 }
 
 @Composable

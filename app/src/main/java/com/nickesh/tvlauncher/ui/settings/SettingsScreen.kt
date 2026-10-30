@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,7 +35,8 @@ import androidx.tv.material3.Text
 import com.nickesh.tvlauncher.data.settings.Settings
 import com.nickesh.tvlauncher.data.settings.TempUnit
 import com.nickesh.tvlauncher.data.settings.WorldClock
-import com.nickesh.tvlauncher.data.settings.ZONE_OPTIONS
+import com.nickesh.tvlauncher.data.weather.GeoMatch
+import com.nickesh.tvlauncher.domain.settings.ClockEdit
 import com.nickesh.tvlauncher.domain.settings.IdleOptions
 import com.nickesh.tvlauncher.domain.settings.SettingsDraft
 import com.nickesh.tvlauncher.domain.settings.SettingsDraftRules
@@ -49,16 +51,15 @@ import kotlin.math.roundToInt
 
 private fun Color.argb(): Long = toArgb().toLong() and 0xFFFFFFFFL
 
-private fun cycleZone(current: String, step: Int): String {
-    val i = ZONE_OPTIONS.indexOf(current).let { if (it < 0) 0 else it }
-    return ZONE_OPTIONS[(i + step + ZONE_OPTIONS.size) % ZONE_OPTIONS.size]
-}
-
 private fun nudgeDim(v: Float, step: Int): Float =
     ((v * 20).roundToInt() + step).coerceIn(0, 16) / 20f
 
 /** Panels that render in the right-hand slot of the Settings screen. */
-private enum class SettingsPanel { IDLE }
+private sealed interface SettingsPanel {
+    data object Idle : SettingsPanel
+    /** City picker for Home ([clock] == null) or clock slot [clock]. */
+    data class City(val clock: Int?) : SettingsPanel
+}
 
 /**
  * Settings over a draft: rows edit [draft] through [onDraft]; nothing is persisted until [onSave].
@@ -73,6 +74,8 @@ fun SettingsScreen(
     onSave: () -> Unit,
     onLeave: () -> Unit,
     onOpenBackground: () -> Unit,
+    /** Geocoder search for the city picker; throws on transport failure. */
+    search: suspend (String) -> List<GeoMatch>,
     focusBackgroundRow: Boolean = false,
     homeKeyEnabled: Boolean = false,
     onOpenHomeKey: () -> Unit = {},
@@ -82,6 +85,9 @@ fun SettingsScreen(
     val settings = draft.settings
     val dirty = SettingsDraftRules.isDirty(saved, settings, savedIdleMinutes, draft.screensaverAfterMinutes)
     fun edit(f: (Settings) -> Settings) = onDraft(draft.copy(settings = f(draft.settings)))
+    fun editClock(i: Int, f: (WorldClock) -> WorldClock) = edit { s ->
+        s.copy(clocks = s.clocks.mapIndexed { j, old -> if (j == i) f(old) else old })
+    }
 
     var confirmDiscard by remember { mutableStateOf(false) }
     var panel by remember { mutableStateOf<SettingsPanel?>(null) }
@@ -130,14 +136,13 @@ fun SettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dpx()),
                 ) {
                     TextSettingRow("Name", settings.name, Modifier.onFocusChanged { if (it.isFocused) lastFocused[0] = firstRow }, rowRequester = firstRow) { v -> edit { it.copy(name = v) } }
-                    TextSettingRow("Home city", settings.homeCity, Modifier.onFocusChanged { if (it.isFocused) lastFocused[0] = req("homeCity") }, rowRequester = req("homeCity")) { v -> edit { it.copy(homeCity = v) } }
-                    ZoneRow("Home time zone", settings.homeZone, tracked("homeZone")) { d -> edit { it.copy(homeZone = cycleZone(it.homeZone, d)) } }
+                    SettingRow("Home", tracked("home"), onClick = { panel = SettingsPanel.City(null) }) {
+                        ValueText("${settings.homeCity} · ${settings.homeZone}")
+                    }
                     settings.clocks.forEachIndexed { i, clock ->
-                        fun editClock(f: (WorldClock) -> WorldClock) = edit { s ->
-                            s.copy(clocks = s.clocks.mapIndexed { j, old -> if (j == i) f(old) else old })
+                        SettingRow("Clock ${i + 1}", tracked("clock$i"), onClick = { panel = SettingsPanel.City(i) }) {
+                            ValueText("${clock.city} · ${clock.zoneId}")
                         }
-                        TextSettingRow("Clock ${i + 1} city", clock.city, Modifier.onFocusChanged { if (it.isFocused) lastFocused[0] = req("clock$i") }, rowRequester = req("clock$i")) { v -> editClock { it.copy(city = v) } }
-                        ZoneRow("Clock ${i + 1} time zone", clock.zoneId, tracked("clockZone$i")) { d -> editClock { it.copy(zoneId = cycleZone(it.zoneId, d)) } }
                     }
                     SettingRow("Units", tracked("units"), onClick = {
                         edit { it.copy(unit = if (it.unit == TempUnit.F) TempUnit.C else TempUnit.F) }
@@ -165,7 +170,7 @@ fun SettingsScreen(
                     SettingRow(
                         "Screensaver after",
                         tracked("idle"),
-                        onClick = { if (idleWritable) panel = SettingsPanel.IDLE else onOpenIdlePermission() },
+                        onClick = { if (idleWritable) panel = SettingsPanel.Idle else onOpenIdlePermission() },
                     ) {
                         ValueText(
                             when {
@@ -190,8 +195,8 @@ fun SettingsScreen(
                 }
                 Spacer(Modifier.width(84.dpx())) // panel starts at x = 1000 design px
                 Box(Modifier.width(760.dpx()).fillMaxHeight().padding(vertical = 8.dpx())) {
-                    when (panel) {
-                        SettingsPanel.IDLE -> ListPanel(
+                    when (val p = panel) {
+                        SettingsPanel.Idle -> ListPanel(
                             title = "Screensaver after",
                             items = IdleOptions.minutes.map { IdleOptions.label(it) },
                             selectedIndex = IdleOptions.indexFor(draft.screensaverAfterMinutes),
@@ -201,6 +206,24 @@ fun SettingsScreen(
                             },
                             onClose = { closePanel(idleRow) },
                         )
+                        is SettingsPanel.City -> key(p) {
+                            val i = p.clock
+                            val row = req(if (i == null) "home" else "clock$i")
+                            val clock = i?.let { settings.clocks[it] }
+                            CityPickerPanel(
+                                title = if (i == null) "Home" else "Clock ${i + 1}",
+                                city = clock?.city ?: settings.homeCity,
+                                zoneId = clock?.zoneId ?: settings.homeZone,
+                                search = search,
+                                onApplyMatch = { m ->
+                                    if (i == null) edit { ClockEdit.applyHomeMatch(it, m) } else editClock(i) { ClockEdit.applyMatch(it, m) }
+                                },
+                                onApplyZone = { z ->
+                                    if (i == null) edit { it.copy(homeZone = z) } else editClock(i) { ClockEdit.withZone(it, z) }
+                                },
+                                onClose = { closePanel(row) },
+                            )
+                        }
                         null -> {}
                     }
                 }
@@ -213,15 +236,4 @@ fun SettingsScreen(
             )
         }
     }
-}
-
-@Composable
-private fun ZoneRow(label: String, zone: String, modifier: Modifier = Modifier, onCycle: (Int) -> Unit) {
-    SettingRow(
-        label,
-        modifier,
-        onClick = { onCycle(1) },
-        onLeft = { onCycle(-1) },
-        onRight = { onCycle(1) },
-    ) { ValueText("‹  $zone  ›") }
 }

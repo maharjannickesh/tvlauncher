@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.nickesh.tvlauncher.domain.settings.ZoneCatalog
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -38,9 +39,18 @@ class SettingsMappingTest {
     }
 
     @Test
-    fun zoneOptions_has19_andContainsKathmandu() {
-        assertEquals(19, ZONE_OPTIONS.size)
-        assertTrue("Asia/Kathmandu" in ZONE_OPTIONS)
+    fun zoneCatalog_offersEveryDefaultAndFormerShortlistZone() {
+        // The full catalog replaced the 19-entry shortlist: nothing that list offered may disappear.
+        val former = listOf(
+            "Pacific/Honolulu", "America/Los_Angeles", "America/Denver", "America/Chicago",
+            "America/New_York", "America/Sao_Paulo", "UTC", "Europe/London", "Europe/Paris",
+            "Europe/Berlin", "Africa/Cairo", "Asia/Dubai", "Asia/Kolkata", "Asia/Kathmandu",
+            "Asia/Singapore", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland",
+        )
+        val d = Settings()
+        for (z in former + d.homeZone + d.clocks.map { it.zoneId }) {
+            assertTrue(z, z in ZoneCatalog.zones(ZoneCatalog.regionOf(z)))
+        }
     }
 
     @Test fun clockCoordinates_roundTrip() {

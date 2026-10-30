@@ -14,6 +14,7 @@ import com.nickesh.tvlauncher.data.system.StandbyTracker
 import com.nickesh.tvlauncher.data.system.SystemIntents
 import com.nickesh.tvlauncher.data.weather.DataStoreWeatherCache
 import com.nickesh.tvlauncher.data.weather.OpenMeteoClient
+import com.nickesh.tvlauncher.data.weather.WeatherApi
 import com.nickesh.tvlauncher.data.weather.WeatherRepository
 import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
@@ -30,11 +31,13 @@ class AppContainer(val context: Context) {
     val systemIntents = SystemIntents(context)
     val standby = StandbyTracker()
     val weatherCache = DataStoreWeatherCache(settingsStore)
+    /** Open-Meteo client: weather loads go through [weather]; the Settings city picker searches it directly. */
+    val weatherApi: WeatherApi = OpenMeteoClient(
+        OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
+        Json { ignoreUnknownKeys = true },
+    )
     val weather = WeatherRepository(
-        OpenMeteoClient(
-            OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
-            Json { ignoreUnknownKeys = true },
-        ),
+        weatherApi,
         weatherCache,
         log = { Log.i("Weather", it) },
     )

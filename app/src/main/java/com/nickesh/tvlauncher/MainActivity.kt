@@ -177,6 +177,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onLeave = { screen = Screen.Home },
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
+                                search = { q -> container.weatherApi.search(q) },
                                 focusBackgroundRow = cameFromBackground,
                                 homeKeyEnabled = homeKeyOn,
                                 onOpenHomeKey = {

@@ -27,13 +27,6 @@ val DEFAULT_FAVOURITES = listOf(
     "com.android.vending",
 )
 
-val ZONE_OPTIONS: List<String> = listOf(
-    "Pacific/Honolulu", "America/Los_Angeles", "America/Denver", "America/Chicago",
-    "America/New_York", "America/Sao_Paulo", "UTC", "Europe/London", "Europe/Paris",
-    "Europe/Berlin", "Africa/Cairo", "Asia/Dubai", "Asia/Kolkata", "Asia/Kathmandu",
-    "Asia/Singapore", "Asia/Shanghai", "Asia/Tokyo", "Australia/Sydney", "Pacific/Auckland",
-)
-
 val SOLID_COLOR_OPTIONS = listOf(0xFF0F1115, 0xFF1B2238, 0xFF24302C, 0xFF3A2A2E)
 
 data class Settings(
