@@ -9,13 +9,26 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.nickesh.tvlauncher.data.apps.AppsRepository
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
+import com.nickesh.tvlauncher.data.weather.DataStoreWeatherCache
+import com.nickesh.tvlauncher.data.weather.OpenMeteoClient
+import com.nickesh.tvlauncher.data.weather.WeatherRepository
+import java.util.concurrent.TimeUnit
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
 
 class AppContainer(val context: Context) {
-    // Shared preferences store; the weather cache reuses it in a later task.
+    // Shared preferences store; the weather cache lives in it too.
     val settingsStore: DataStore<Preferences> =
         PreferenceDataStoreFactory.create(
             corruptionHandler = ReplaceFileCorruptionHandler { emptyPreferences() },
         ) { context.preferencesDataStoreFile("settings") }
     val settings = SettingsRepository(settingsStore)
     val apps = AppsRepository(context)
+    val weather = WeatherRepository(
+        OpenMeteoClient(
+            OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
+            Json { ignoreUnknownKeys = true },
+        ),
+        DataStoreWeatherCache(settingsStore),
+    )
 }

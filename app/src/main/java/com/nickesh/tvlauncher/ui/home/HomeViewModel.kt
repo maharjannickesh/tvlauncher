@@ -6,20 +6,23 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
 import com.nickesh.tvlauncher.data.settings.Settings
-import com.nickesh.tvlauncher.data.settings.TempUnit
 import com.nickesh.tvlauncher.domain.apps.AppOrdering
 import com.nickesh.tvlauncher.domain.apps.InstalledApp
 import com.nickesh.tvlauncher.domain.clock.ClockMath
 import com.nickesh.tvlauncher.domain.clock.ClockSnapshot
 import com.nickesh.tvlauncher.domain.clock.TimeText
-import java.time.DayOfWeek
 import java.time.Instant
 import java.time.ZoneId
+import java.time.LocalDate
 import java.time.ZonedDateTime
-import java.time.format.TextStyle
-import java.util.Locale
-import kotlin.math.roundToInt
+import kotlin.time.Duration.Companion.minutes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -62,22 +65,6 @@ data class HomeUiState(
 
 enum class SystemAction { ASSIST, SEARCH, INPUTS, PROFILE }
 
-/** Static stand-in until Task 7 (weather). Temperatures are authored in F and converted for the unit. */
-internal fun placeholderWeather(homeDate: ZonedDateTime, settings: Settings): WeatherUi {
-    fun t(f: Int) = (if (settings.unit == TempUnit.C) ((f - 32) * 5 / 9.0).roundToInt() else f).toString() + "°"
-    val sample = listOf(
-        Triple(WeatherKind.SUN, 64, 46),
-        Triple(WeatherKind.CLOUD, 59, 44),
-        Triple(WeatherKind.RAIN, 55, 41),
-        Triple(WeatherKind.PARTLY, 60, 43),
-    )
-    val forecast = sample.mapIndexed { i, (kind, hi, lo) ->
-        val day = homeDate.dayOfWeek.plus((i + 1).toLong())
-        DayForecast(day.getDisplayName(TextStyle.SHORT, Locale.US), kind, t(hi), t(lo))
-    }
-    return WeatherUi(settings.weatherCity, t(58), "Partly cloudy", t(63), t(47), WeatherKind.PARTLY, forecast)
-}
-
 private val AllAppsTile = AppTile("", "All apps", null, null, Color(0x1FFFFFFF))
 
 /** Favourites first, then alphabetical, capped at 8, plus the trailing synthetic "All apps" tile. */
@@ -96,14 +83,34 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
         }
     }
 
-    private fun build(settings: Settings, allApps: List<AppTile>, now: Instant): HomeUiState {
+    private val weatherRepo = container.weather
+
+    /** Latest weather for the configured city, or null until the first load succeeds (also read by the screensaver). */
+    val weather = MutableStateFlow<WeatherUi?>(null)
+
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            container.settings.settings
+                .map { Triple(it.weatherCity, it.unit, it.homeZone) }
+                .distinctUntilChanged()
+                .collectLatest { (city, unit, zone) ->
+                    while (true) {
+                        weather.value = weatherRepo.load(city, unit, zone)
+                            ?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
+                        delay(30.minutes)
+                    }
+                }
+        }
+    }
+
+    private fun build(settings: Settings, allApps: List<AppTile>, weather: WeatherUi?, now: Instant): HomeUiState {
         val home = now.atZone(ZoneId.of(settings.homeZone))
         return HomeUiState(
             greeting = ClockMath.greeting(home.hour),
             homeCity = settings.homeCity,
             hero = ClockMath.timeText(home, settings.use24h),
             dateLine = ClockMath.dateLine(home),
-            weather = placeholderWeather(home, settings),
+            weather = weather,
             clocks = settings.clocks.map { ClockMath.snapshot(it, home, now, settings.use24h) },
             apps = homeRow(allApps, settings.favourites),
             accent = Color(settings.accentArgb),
@@ -112,6 +119,6 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     }
 
     val state: StateFlow<HomeUiState> =
-        combine(container.settings.settings, container.apps.apps, ticker, ::build)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(Settings(), container.apps.apps.value, Instant.now()))
+        combine(container.settings.settings, container.apps.apps, weather, ticker, ::build)
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(Settings(), container.apps.apps.value, null, Instant.now()))
 }

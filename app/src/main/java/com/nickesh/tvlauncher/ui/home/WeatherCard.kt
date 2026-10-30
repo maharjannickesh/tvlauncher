@@ -41,7 +41,8 @@ internal fun WeatherKind.icon(): ImageVector = when (this) {
 }
 
 @Composable
-fun WeatherCard(weather: WeatherUi, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+/** [weather] is null until the first load succeeds: shows "--°" with the configured [city] and no forecast. */
+fun WeatherCard(weather: WeatherUi?, city: String, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(28.dpx())
     Surface(
         onClick = onClick,
@@ -62,13 +63,14 @@ fun WeatherCard(weather: WeatherUi, accent: Color, onClick: () -> Unit, modifier
     ) {
         Column(Modifier.padding(horizontal = 32.dpx(), vertical = 28.dpx()), verticalArrangement = Arrangement.spacedBy(22.dpx())) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(22.dpx()), verticalAlignment = Alignment.CenterVertically) {
-                if (weather.kind == WeatherKind.PARTLY) {
+                val kind = weather?.kind ?: WeatherKind.CLOUD
+                if (kind == WeatherKind.PARTLY) {
                     Image(Icons.PartlyCard, null, Modifier.size(84.dpx()))
                 } else {
-                    Icon(weather.kind.icon(), null, Modifier.size(84.dpx()), tint = Color.White)
+                    Icon(kind.icon(), null, Modifier.size(84.dpx()), tint = Color.White)
                 }
                 Text(
-                    weather.now,
+                    weather?.now ?: "--°",
                     color = Color.White,
                     fontFamily = Outfit,
                     fontWeight = FontWeight.W300,
@@ -80,16 +82,16 @@ fun WeatherCard(weather: WeatherUi, accent: Color, onClick: () -> Unit, modifier
                     verticalArrangement = Arrangement.spacedBy(4.dpx()),
                     horizontalAlignment = Alignment.End,
                 ) {
-                    Text(weather.condition, fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 28.spx(), textAlign = TextAlign.End)
+                    Text(weather?.condition ?: "", fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 28.spx(), textAlign = TextAlign.End)
                     Text(
-                        "H ${weather.hi}  ·  L ${weather.lo}",
+                        if (weather != null) "H ${weather.hi}  ·  L ${weather.lo}" else "",
                         color = Color.White.copy(alpha = 0.8f),
                         fontFamily = Outfit,
                         fontWeight = FontWeight.W400,
                         fontSize = 22.spx(),
                     )
                     Text(
-                        weather.city,
+                        weather?.city ?: city,
                         color = Color.White.copy(alpha = 0.7f),
                         fontFamily = Outfit,
                         fontWeight = FontWeight.W400,
@@ -99,7 +101,7 @@ fun WeatherCard(weather: WeatherUi, accent: Color, onClick: () -> Unit, modifier
             }
             Column(Modifier.fillMaxWidth().height(1.dpx()).background(Color(0x29FFFFFF))) {}
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dpx())) {
-                weather.forecast.forEach { f ->
+                weather?.forecast.orEmpty().forEach { f ->
                     Column(
                         Modifier.weight(1f),
                         horizontalAlignment = Alignment.CenterHorizontally,
