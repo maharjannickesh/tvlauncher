@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nickesh.tvlauncher.data.settings.Settings
+import com.nickesh.tvlauncher.data.system.read
 import com.nickesh.tvlauncher.domain.home.HomeKey
+import com.nickesh.tvlauncher.domain.home.HomeKeyState
 import com.nickesh.tvlauncher.ui.allapps.AllAppsScreen
 import com.nickesh.tvlauncher.ui.home.AppTile
 import com.nickesh.tvlauncher.ui.home.HomeScreen
@@ -131,10 +133,10 @@ class MainActivity : ComponentActivity() {
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
                                 onBack = { screen = Screen.Home },
                                 focusBackgroundRow = cameFromBackground,
-                                stockHomeInstalled = remember { container.systemIntents.stockHomeInstalled() },
-                                onOpenStockHome = {
-                                    if (!container.systemIntents.openStockHomeDetails()) {
-                                        Toast.makeText(this@MainActivity, "Open TV Settings → Apps → See all apps → Google TV Home", Toast.LENGTH_LONG).show()
+                                homeKeyEnabled = remember { HomeKeyState.read(this@MainActivity) },
+                                onOpenHomeKey = {
+                                    if (!container.systemIntents.openAccessibilitySettings()) {
+                                        Toast.makeText(this@MainActivity, "Open TV Settings → System → Accessibility → TV Launcher Home key", Toast.LENGTH_LONG).show()
                                     }
                                 },
                             )

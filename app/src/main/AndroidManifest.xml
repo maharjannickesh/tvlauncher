@@ -23,8 +23,7 @@
         <intent><action android:name="com.android.tv.settings.INPUTS" /></intent>
         <intent><action android:name="android.settings.SYNC_SETTINGS" /></intent>
         <intent><action android:name="android.settings.SETTINGS" /></intent>
-        <intent><action android:name="android.settings.APPLICATION_DETAILS_SETTINGS" /></intent>
-        <package android:name="com.google.android.apps.tv.launcherx" />
+        <intent><action android:name="android.settings.ACCESSIBILITY_SETTINGS" /></intent>
     </queries>
 
     <application
@@ -45,11 +44,6 @@
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
-            </intent-filter>
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN" />
-                <category android:name="android.intent.category.HOME" />
-                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
 

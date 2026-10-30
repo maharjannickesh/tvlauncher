@@ -54,8 +54,8 @@ fun SettingsScreen(
     onOpenBackground: () -> Unit,
     onBack: () -> Unit,
     focusBackgroundRow: Boolean = false,
-    stockHomeInstalled: Boolean = false,
-    onOpenStockHome: () -> Unit = {},
+    homeKeyEnabled: Boolean = false,
+    onOpenHomeKey: () -> Unit = {},
 ) {
     BackHandler { onBack() }
     val firstRow = remember { FocusRequester() }
@@ -107,14 +107,12 @@ fun SettingsScreen(
                     SwitchVisual(settings.screensaverSeconds)
                 }
                 SettingRow("Background…", Modifier.focusRequester(bgRow), onClick = onOpenBackground) { ValueText("›") }
-                if (stockHomeInstalled) {
-                    SettingRow("Google TV Home…", onClick = onOpenStockHome) { ValueText("›") }
-                    Text(
-                        "Re-enable it there. To go back fully, also uninstall TV Launcher under TV Settings → Apps.",
-                        color = Color(0x99FFFFFF), fontFamily = Outfit, fontWeight = FontWeight.W300, fontSize = 18.spx(),
-                        modifier = Modifier.padding(start = 8.dpx()),
-                    )
-                }
+                SettingRow("Home button…", onClick = onOpenHomeKey) { ValueText(if (homeKeyEnabled) "On  ›" else "Off  ›") }
+                Text(
+                    "Turn on 'TV Launcher Home key' there to make the Home button open this launcher.",
+                    color = Color(0x99FFFFFF), fontFamily = Outfit, fontWeight = FontWeight.W300, fontSize = 18.spx(),
+                    modifier = Modifier.padding(start = 8.dpx()),
+                )
             }
         }
     }
