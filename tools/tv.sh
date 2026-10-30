@@ -118,6 +118,13 @@ case "$cmd" in
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
     "$ADB" -s "$s" shell settings put system screen_off_timeout $((m*60000))
     "$ADB" -s "$s" shell settings get system screen_off_timeout ;;
+  idle-perm|idle-perm-deny)
+    # WRITE_SETTINGS app-op for our package only (the "Modify system settings" toggle).
+    [ "$cmd" = idle-perm ] && mode=allow || mode=deny
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell appops set com.nickesh.tvlauncher WRITE_SETTINGS "$mode"
+    "$ADB" -s "$s" shell appops get com.nickesh.tvlauncher WRITE_SETTINGS ;;
   *)
-    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop|homekey-on|homekey-off|homekey-status|remote <short|long>|idle-set <minutes>}" >&2; exit 2 ;;
+    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop|homekey-on|homekey-off|homekey-status|remote <short|long>|idle-set <minutes>|idle-perm|idle-perm-deny}" >&2; exit 2 ;;
 esac

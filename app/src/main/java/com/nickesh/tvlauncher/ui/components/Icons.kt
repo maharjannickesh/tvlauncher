@@ -119,6 +119,7 @@ object Icons {
 
     // Back / Photo have no mockup SVG on the Home screen; later tasks trace them from their own mockups.
     val Back = vector("Back") { stroked("M15 5l-7 7 7 7", 1.8f) }
+    val Check = vector("Check") { stroked("M5 12.5l4.5 4.5L19 7.5", 2f) }
     val Photo = vector("Photo") {
         stroked(rect(3f, 5f, 18f, 14f, 2f), 1.8f)
         stroked(circle(9f, 10f, 1.5f), 1.8f)

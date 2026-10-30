@@ -21,7 +21,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nickesh.tvlauncher.data.settings.Settings
+import com.nickesh.tvlauncher.data.system.IdleTimer
 import com.nickesh.tvlauncher.data.system.read
+import com.nickesh.tvlauncher.domain.settings.SettingsDraft
+import com.nickesh.tvlauncher.domain.settings.SettingsDraftRules
 import com.nickesh.tvlauncher.domain.home.HomeKey
 import com.nickesh.tvlauncher.domain.home.HomeKeyState
 import com.nickesh.tvlauncher.ui.allapps.AllAppsScreen
@@ -68,6 +71,15 @@ class MainActivity : ComponentActivity() {
                 if (homePresses.value > 0) HomeKey.next(screen)?.let { screen = it }
             }
             var cameFromBackground by rememberSaveable { mutableStateOf(false) }
+            // The Settings draft lives above the screen switch so Background → back keeps pending edits.
+            // Replaced on every open from Home; a config change loses it (Settings branch re-creates it).
+            var draft by remember { mutableStateOf<SettingsDraft?>(null) }
+            var savedIdleMinutes by remember { mutableStateOf<Int?>(null) }
+            fun openDraft(from: Settings) {
+                val minutes = IdleTimer.readIdleMinutes(this@MainActivity)
+                savedIdleMinutes = minutes
+                draft = SettingsDraft(from, minutes)
+            }
             val homeViewModel = viewModel { HomeViewModel(container) }
             val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
             androidx.compose.runtime.DisposableEffect(lifecycleOwner, homeViewModel) {
@@ -128,26 +140,49 @@ class MainActivity : ComponentActivity() {
                         Screen.Settings -> {
                             val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
                             var homeKeyOn by remember { mutableStateOf(HomeKeyState.read(this@MainActivity)) }
+                            var idleWritable by remember { mutableStateOf(IdleTimer.canWriteIdle(this@MainActivity)) }
                             // Back from the Accessibility page only resumes this activity; re-read there.
                             androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
                                 val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
                                     if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                                         homeKeyOn = HomeKeyState.read(this@MainActivity)
+                                        idleWritable = IdleTimer.canWriteIdle(this@MainActivity)
                                     }
                                 }
                                 lifecycleOwner.lifecycle.addObserver(obs)
                                 onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
                             }
-                            SettingsScreen(
-                                settings = cur,
-                                onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
+                            LaunchedEffect(Unit) { if (draft == null) openDraft(cur) }
+                            val d = draft
+                            if (d != null) SettingsScreen(
+                                saved = cur,
+                                draft = d,
+                                savedIdleMinutes = savedIdleMinutes,
+                                onDraft = { draft = it },
+                                onSave = {
+                                    val toSave = d.settings
+                                    lifecycleScope.launch { container.settings.update { SettingsDraftRules.merge(it, toSave) } }
+                                    val minutes = d.screensaverAfterMinutes
+                                    if (minutes != null && minutes != savedIdleMinutes &&
+                                        !IdleTimer.writeIdleMinutes(this@MainActivity, minutes)
+                                    ) {
+                                        Toast.makeText(this@MainActivity, "Screensaver timer needs 'Modify system settings' — tap the row to grant", Toast.LENGTH_LONG).show()
+                                    }
+                                    screen = Screen.Home
+                                },
+                                onLeave = { screen = Screen.Home },
                                 onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
-                                onBack = { screen = Screen.Home },
                                 focusBackgroundRow = cameFromBackground,
                                 homeKeyEnabled = homeKeyOn,
                                 onOpenHomeKey = {
                                     if (!container.systemIntents.openAccessibilitySettings()) {
                                         Toast.makeText(this@MainActivity, "Open TV Settings → System → Accessibility → TV Launcher Home key", Toast.LENGTH_LONG).show()
+                                    }
+                                },
+                                idleWritable = idleWritable,
+                                onOpenIdlePermission = {
+                                    if (!IdleTimer.openWriteSettingsPage(this@MainActivity)) {
+                                        Toast.makeText(this@MainActivity, "Open TV Settings → Apps → Special app access → Modify system settings → TV Launcher", Toast.LENGTH_LONG).show()
                                     }
                                 },
                             )
@@ -167,7 +202,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 state = homeState,
                                 onOpenAllApps = { screen = Screen.AllApps },
-                                onOpenSettings = { cameFromBackground = false; screen = Screen.Settings },
+                                onOpenSettings = { cameFromBackground = false; openDraft(settings); screen = Screen.Settings },
                                 onLaunch = launch,
                                 showInputs = showInputs,
                                 onAction = { action ->
