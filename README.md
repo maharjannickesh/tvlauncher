@@ -7,10 +7,11 @@ Built with Kotlin and Jetpack Compose for TV (`androidx.tv:tv-material`), DataSt
 ## Features
 
 - Welcome splash ("Welcome <name>!!!") that cross-fades into Home once the apps and background are ready.
-- Home: greeting by home-time hour, hero clock (12 h or 24 h), date, weather card (current, hi/lo, 4-day forecast from Open-Meteo, cached), three world-clock cards with analog dials, and an apps row (favourites first, then alphabetical) ending in **All apps**.
+- Home: greeting by home-time hour in title case ("Good Afternoon, Nickesh", name from Settings), hero clock (12 h or 24 h), date, weather card for the home city (current, hi/lo, 4-day forecast from Open-Meteo, cached), three digital world-clock cards each with that city's weather icon and temperature (moon for a clear night; a dimmed "--°" while loading, failed or just re-picked), and an apps row (favourites first, then alphabetical) ending in **All apps**.
 - Top bar: Ask pill (assistant, generic mic icon), Search, Inputs (hidden if the system has no Inputs page), Settings, Profile.
-- All apps: full-screen grid of every leanback app.
-- Settings and Background screens, all D-pad driven, with the TV on-screen keyboard for text rows.
+- Search opens **All apps with a search field**: the TV keyboard rises as soon as the field is focused and the grid filters as you type. Back with the keyboard up dismisses it, the next Back clears the query, the next leaves. The **All apps** tile on Home opens the same screen with the first app focused instead.
+- Settings and Background screens, all D-pad driven, with the TV on-screen keyboard for text rows and a right-side city picker for places.
+- Weather: four independent fetches (home plus the three clocks), cached 30 minutes per city, refreshed sooner when the location changes.
 - Flip-clock screensaver as a real `DreamService`.
 - Every network call degrades to cache or placeholders; no analytics, no accounts.
 
@@ -24,6 +25,7 @@ System Java is 27 on this Mac and Gradle needs 21:
 - Tests: `./gradlew :app:testDebugUnitTest`; lint: `./gradlew lintDebug`
 - Connect, install and launch on the TV (wireless adb, 10.0.0.21): `tools/tv.sh connect && tools/tv.sh install`
 - Screenshot to `shots/<name>.png` (git-ignored): `tools/tv.sh shot <name>`
+- Idle permission (see Settings): `tools/tv.sh idle-perm` grants "Modify system settings" to the app, `tools/tv.sh idle-perm-deny` revokes it
 - Home key service: `tools/tv.sh homekey-on | homekey-off | homekey-status`; virtual remote press (`input keyevent` never reaches accessibility services, so this uses uinput): `tools/tv.sh remote short|long`; screen-off timeout: `tools/tv.sh idle-set <minutes>` (see below)
 - If a second adb device is attached, pass `-s <serial>` to raw adb; `tools/tv.sh` picks the 10.0.0.21 serial itself.
 
@@ -39,7 +41,16 @@ The Chromecast with Google TV has no picker for third-party screensavers, so sel
 
 ## Settings
 
-Name, Home city, Home time zone, three world clocks (city and time zone each), Weather city, Units (F/C), 24-hour clock, Accent colour (4 options), Screensaver dim, Show seconds (screensaver), Background... (source: built-in scenes Dusk/Night/Forest or solid colour; Google Photos is shown as "Coming soon"; photo change interval and shuffle for the future photo source), and Home button... (On/Off; opens the TV Accessibility page, the state refreshes when Settings is reopened).
+Settings is a draft: edits stay in memory until you move to the **Save** row at the end and press OK. Back with unsaved changes asks "Discard changes?" (Keep editing / Discard). The Background screen is not part of the draft; it still applies immediately.
+
+Rows: Name, **Home**, **Clock 1/2/3**, Units (F/C), 24-hour clock, Accent colour (4 options), Screensaver dim, Show seconds (screensaver), **Screensaver after**, Background... (source: built-in scenes Dusk/Night/Forest or solid colour; Google Photos is shown as "Coming soon"; photo change interval and shuffle for the future photo source), Home button... (On/Off; opens the TV Accessibility page, the state refreshes when Settings is reopened), and Save.
+
+- **Home and Clock 1/2/3** open a city picker on the right. Type a city and press Done: up to 8 geocoded matches appear (name, region, country and time zone). Picking one sets the city, its time zone and its coordinates together; typed text alone changes nothing. The **Time zone** row in the picker opens the full zone list in two steps (region, then zone) for when you want a zone other than the match's. The big weather card follows the home city; the old "Weather city" setting is gone (installs that had one keep it until a home city is picked).
+- **Screensaver after** (OK opens a list: 1, 2, 5, 10, 15, 30 or 60 min) writes the TV's `screen_off_timeout` when you Save. That needs the "Modify system settings" permission, and this Google TV has no settings page to grant it, so grant it once over adb:
+
+      tools/tv.sh idle-perm        # grant (idle-perm-deny revokes it)
+
+  Without it the row shows "Needs permission ›" and a toast with this hint.
 
 ## Performance (debug build, Chromecast with Google TV, armv7)
 
@@ -78,4 +89,3 @@ Debug builds accept `-PwelcomeReplayMs=<ms>` (for example `./gradlew installDebu
 - Google Photos Picker backgrounds (QR plus device-code OAuth; needs a Google Cloud OAuth client).
 - Rearrange the apps row (and a favourites editor).
 - Snow and storm weather icons (both map to rain in v1).
-- Per-clock weather.
