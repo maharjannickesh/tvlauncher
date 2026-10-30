@@ -131,7 +131,7 @@ class MainActivity : ComponentActivity() {
                             val allApps by container.apps.apps.collectAsStateWithLifecycle()
                             AllAppsScreen(
                                 apps = allApps,
-                                focusSearch = (s as Screen.AllApps).focusSearch,
+                                focusSearch = s.focusSearch,
                                 settings = homeState.settings,
                                 accent = homeState.accent,
                                 onLaunch = launch,
