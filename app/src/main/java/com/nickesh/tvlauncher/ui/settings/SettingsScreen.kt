@@ -71,7 +71,7 @@ fun SettingsScreen(
                     .padding(vertical = 8.dpx(), horizontal = 8.dpx()),
                 verticalArrangement = Arrangement.spacedBy(10.dpx()),
             ) {
-                TextSettingRow("Name", settings.name, Modifier.focusRequester(firstRow)) { v -> onUpdate { it.copy(name = v) } }
+                TextSettingRow("Name", settings.name, rowRequester = firstRow) { v -> onUpdate { it.copy(name = v) } }
                 TextSettingRow("Home city", settings.homeCity) { v -> onUpdate { it.copy(homeCity = v) } }
                 ZoneRow("Home time zone", settings.homeZone) { d -> onUpdate { it.copy(homeZone = cycleZone(it.homeZone, d)) } }
                 settings.clocks.forEachIndexed { i, clock ->
@@ -104,7 +104,7 @@ fun SettingsScreen(
                 SettingRow("Show seconds", onClick = { onUpdate { it.copy(screensaverSeconds = !it.screensaverSeconds) } }) {
                     SwitchVisual(settings.screensaverSeconds)
                 }
-                SettingRow("Background…", onClick = onOpenBackground) { ValueText("›") }
+                SettingRow("Background…", Modifier.focusRequester(bgRow), onClick = onOpenBackground) { ValueText("›") }
             }
         }
     }

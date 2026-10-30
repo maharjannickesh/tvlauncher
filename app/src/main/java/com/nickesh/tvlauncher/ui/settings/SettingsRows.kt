@@ -110,14 +110,17 @@ fun SwitchVisual(on: Boolean) {
 }
 
 @Composable
-fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, onCommit: (String) -> Unit) {
+fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, rowRequester: FocusRequester = remember { FocusRequester() }, onCommit: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(value) }
     var hadFocus by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
     BackHandler(enabled = editing) { editing = false }
-    LaunchedEffect(editing) { if (editing) runCatching { requester.requestFocus() } }
-    SettingRow(label, modifier, onClick = { draft = value; hadFocus = false; editing = true }) {
+    LaunchedEffect(editing) {
+        if (editing) runCatching { requester.requestFocus() }
+        else if (hadFocus) { hadFocus = false; runCatching { rowRequester.requestFocus() } } // Done/Back, not focus moved away
+    }
+    SettingRow(label, modifier.focusRequester(rowRequester), onClick = { draft = value; hadFocus = false; editing = true }) {
         if (editing) {
             BasicTextField(
                 value = draft,
