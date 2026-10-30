@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TV Screensaver</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&amp;family=Roboto+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#cfe0ff}a:hover{color:#ffffff}
+@keyframes flipA{0%{transform:rotateX(90deg)}100%{transform:rotateX(0deg)}}
+@keyframes flipB{0%{transform:rotateX(90deg)}100%{transform:rotateX(0deg)}}
+@keyframes topA{0%{transform:rotateX(0deg)}100%{transform:rotateX(-90deg)}}
+@keyframes topB{0%{transform:rotateX(0deg)}100%{transform:rotateX(-90deg)}}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; font-family: 'Outfit', system-ui, sans-serif; color: #ffffff; background: #05070d">
+
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" aria-hidden="true" style="position: absolute; inset: 0">
+<defs>
+<linearGradient id="ssky" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="{{sc.skyTop}}"></stop>
+<stop offset="0.55" stop-color="{{sc.skyMid}}"></stop>
+<stop offset="1" stop-color="{{sc.horizon}}"></stop>
+</linearGradient>
+</defs>
+<rect x="0" y="0" width="1920" height="1080" fill="url(#ssky)"></rect>
+<sc-if value="{{sc.stars}}" hint-placeholder-val="{{ true }}">
+<g fill="#ffffff">
+<circle cx="140" cy="90" r="1.6" opacity="0.8"></circle>
+<circle cx="320" cy="180" r="1.2" opacity="0.6"></circle>
+<circle cx="610" cy="70" r="1.8" opacity="0.9"></circle>
+<circle cx="840" cy="210" r="1.1" opacity="0.5"></circle>
+<circle cx="1010" cy="120" r="1.5" opacity="0.7"></circle>
+<circle cx="1330" cy="60" r="1.2" opacity="0.6"></circle>
+<circle cx="1520" cy="170" r="1.7" opacity="0.8"></circle>
+<circle cx="1710" cy="95" r="1.3" opacity="0.7"></circle>
+<circle cx="1860" cy="230" r="1.1" opacity="0.5"></circle>
+<circle cx="460" cy="300" r="1.0" opacity="0.4"></circle>
+<circle cx="1180" cy="280" r="1.2" opacity="0.5"></circle>
+</g>
+</sc-if>
+<circle cx="1240" cy="470" r="{{sc.orbR}}" fill="{{sc.orb}}" opacity="0.9"></circle>
+<path d="M0 620 L180 540 L320 590 L520 470 L700 560 L860 500 L1040 580 L1240 450 L1420 540 L1600 480 L1780 560 L1920 510 L1920 1080 L0 1080 Z" fill="{{sc.m1}}"></path>
+<path d="M0 720 L160 650 L340 700 L540 610 L760 690 L960 630 L1160 710 L1380 620 L1580 690 L1760 640 L1920 680 L1920 1080 L0 1080 Z" fill="{{sc.m2}}"></path>
+<path d="M0 820 L220 760 L460 800 L700 740 L940 800 L1200 750 L1460 810 L1700 770 L1920 800 L1920 1080 L0 1080 Z" fill="{{sc.m3}}"></path>
+<path d="M0 930 C300 890 600 950 960 910 C1320 870 1600 940 1920 900 L1920 1080 L0 1080 Z" fill="{{sc.m4}}"></path>
+</svg>
+
+<div style="position: absolute; inset: 0; background: rgba(0,0,0,{{dim}})"></div>
+
+<div style="position: absolute; inset: 0; box-sizing: border-box; padding: 72px 96px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 40px">
+
+<div style="display: flex; align-items: center; gap: 28px" role="img" aria-label="{{aria}}">
+<sc-for list="{{groups}}" as="g" hint-placeholder-count="2">
+<div style="display: flex; align-items: center; gap: 28px">
+<sc-if value="{{g.colon}}" hint-placeholder-val="{{ false }}">
+<div style="display: flex; flex-direction: column; gap: 56px; padding: 0 8px">
+<span style="width: 26px; height: 26px; border-radius: 13px; background: rgba(255,255,255,0.75)"></span>
+<span style="width: 26px; height: 26px; border-radius: 13px; background: rgba(255,255,255,0.75)"></span>
+</div>
+</sc-if>
+<div style="display: flex; gap: 16px">
+<sc-for list="{{g.digits}}" as="d" hint-placeholder-count="2">
+<div style="width: {{d.w}}px; height: {{d.h}}px; position: relative; perspective: 1400px; border-radius: 26px; box-shadow: 0 30px 60px rgba(0,0,0,0.55)">
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 50%; overflow: hidden; border-radius: 26px 26px 0 0; background: #23262e">
+<span style="position: absolute; left: 0; right: 0; top: 0; height: {{d.h}}px; line-height: {{d.h}}px; text-align: center; font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: {{d.fs}}px; color: #eef1f6">{{d.v}}</span>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 50%; overflow: hidden; border-radius: 0 0 26px 26px; background: #1c1f26">
+<span style="position: absolute; left: 0; right: 0; top: -{{d.half}}px; height: {{d.h}}px; line-height: {{d.h}}px; text-align: center; font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: {{d.fs}}px; color: #e2e6ee">{{d.prev}}</span>
+</div>
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 50%; overflow: hidden; border-radius: 26px 26px 0 0; background: #23262e; transform-origin: bottom; backface-visibility: hidden; transform: rotateX(-90deg); animation: {{d.topAnim}} 300ms ease-in 1 both">
+<span style="position: absolute; left: 0; right: 0; top: 0; height: {{d.h}}px; line-height: {{d.h}}px; text-align: center; font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: {{d.fs}}px; color: #eef1f6">{{d.prev}}</span>
+</div>
+<div style="position: absolute; left: 0; right: 0; bottom: 0; height: 50%; overflow: hidden; border-radius: 0 0 26px 26px; background: #1c1f26; transform-origin: top; backface-visibility: hidden; animation: {{d.anim}} 300ms ease-out 300ms 1 both">
+<span style="position: absolute; left: 0; right: 0; top: -{{d.half}}px; height: {{d.h}}px; line-height: {{d.h}}px; text-align: center; font-family: 'Roboto Mono', monospace; font-weight: 600; font-size: {{d.fs}}px; color: #e2e6ee">{{d.v}}</span>
+</div>
+<div style="position: absolute; left: 0; right: 0; top: calc(50% - 2px); height: 4px; background: #05070d"></div>
+<div style="position: absolute; left: -5px; top: calc(50% - 9px); width: 10px; height: 18px; border-radius: 4px; background: #05070d"></div>
+<div style="position: absolute; right: -5px; top: calc(50% - 9px); width: 10px; height: 18px; border-radius: 4px; background: #05070d"></div>
+</div>
+</sc-for>
+</div>
+</div>
+</sc-for>
+<sc-if value="{{showAp}}" hint-placeholder-val="{{ true }}">
+<span style="align-self: flex-end; margin-bottom: 18px; font-size: 44px; font-weight: 400; letter-spacing: 2px; color: rgba(255,255,255,0.85)">{{ap}}</span>
+</sc-if>
+</div>
+
+<span style="font-size: 40px; font-weight: 300; color: rgba(255,255,255,0.9)">{{dateLine}}</span>
+
+<div style="display: flex; align-items: center; gap: 40px; margin-top: 24px; padding: 20px 36px; border-radius: 40px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); backdrop-filter: blur(24px)">
+<div style="display: flex; align-items: center; gap: 14px">
+<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3"></circle><path d="M9 3v1.2M3 9h1.2M4.8 4.8l.9.9M13.2 4.8l-.9.9"></path><path d="M9 20h8a3.5 3.5 0 0 0 0-7 4.5 4.5 0 0 0-8.6 1.2A3 3 0 0 0 9 20z"></path></svg>
+<span style="font-size: 30px; font-weight: 400">{{temp}}</span>
+<span style="font-size: 24px; color: rgba(255,255,255,0.75)">{{weatherCity}}</span>
+</div>
+<sc-for list="{{clocks}}" as="c" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 40px">
+<span style="width: 1px; height: 36px; background: rgba(255,255,255,0.2)"></span>
+<div style="display: flex; align-items: baseline; gap: 12px">
+<span style="font-size: 24px; color: rgba(255,255,255,0.75)">{{c.city}}</span>
+<span style="font-size: 30px; font-weight: 400; font-variant-numeric: tabular-nums">{{c.t}}</span>
+<span style="font-size: 20px; color: rgba(255,255,255,0.7)">{{c.ap}}</span>
+</div>
+</div>
+</sc-for>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scene":{"editor":"enum","options":["Dusk","Night","Forest"],"default":"Night","section":"Look"},"dim":{"editor":"range","min":0,"max":0.8,"step":0.05,"default":0.35,"section":"Look"},"showSeconds":{"editor":"boolean","default":false,"section":"Clock"},"use24h":{"editor":"boolean","default":false,"section":"Clock"},"homeZone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"America/New_York","section":"Clock"},"clock1City":{"editor":"text","default":"Kathmandu","section":"World clocks"},"clock1Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Asia/Kathmandu","section":"World clocks"},"clock2City":{"editor":"text","default":"London","section":"World clocks"},"clock2Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Europe/London","section":"World clocks"},"clock3City":{"editor":"text","default":"Tokyo","section":"World clocks"},"clock3Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Asia/Tokyo","section":"World clocks"},"weatherCity":{"editor":"text","default":"Columbus","section":"Weather"},"unit":{"editor":"enum","options":["F","C"],"default":"F","section":"Weather"},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this.timer = setInterval(() => this.forceUpdate(), 1000);
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  parts(zone, now) {
+    try {
+      const f = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' });
+      const o = {};
+      f.formatToParts(now).forEach((p) => { o[p.type] = p.value; });
+      return { y: +o.year, mo: +o.month, d: +o.day, h: (+o.hour) % 24, mi: +o.minute, s: +o.second };
+    } catch (e) {
+      const d = new Date(now);
+      return { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), mi: d.getMinutes(), s: d.getSeconds() };
+    }
+  }
+  renderVals() {
+    const P = this.props;
+    const now = Date.now();
+    const pad = (n) => String(n).padStart(2, '0');
+    const h24 = !!(P.use24h ?? false);
+    const showSec = !!(P.showSeconds ?? false);
+    const homeZone = P.homeZone ?? 'America/New_York';
+    const hp = this.parts(homeZone, now);
+    const hh = h24 ? pad(hp.h) : pad(hp.h % 12 || 12);
+    const ap = hp.h < 12 ? 'AM' : 'PM';
+
+    if (!this.prevDigits) this.prevDigits = {};
+    if (!this.lastVals) this.lastVals = {};
+    const big = showSec ? { w: 200, h: 290, fs: 220 } : { w: 250, h: 360, fs: 280 };
+    const mk = (key, v, size) => {
+      const last = this.lastVals[key];
+      if (last === undefined || !this.prevDigits[key]) { this.lastVals[key] = v; this.prevDigits[key] = { prev: v, flip: 0 }; }
+      else if (last !== v) { this.prevDigits[key] = { prev: last, flip: (this.prevDigits[key].flip + 1) % 2 }; this.lastVals[key] = v; }
+      const st = this.prevDigits[key];
+      const odd = st.flip === 1;
+      return { v, prev: st.prev, w: size.w, h: size.h, fs: size.fs, half: size.h / 2, anim: odd ? 'flipA' : 'flipB', topAnim: odd ? 'topA' : 'topB' };
+    };
+    const groups = [
+      { colon: false, digits: [mk('h1', hh[0], big), mk('h2', hh[1], big)] },
+      { colon: true, digits: [mk('m1', pad(hp.mi)[0], big), mk('m2', pad(hp.mi)[1], big)] }
+    ];
+    if (showSec) groups.push({ colon: true, digits: [mk('s1', pad(hp.s)[0], big), mk('s2', pad(hp.s)[1], big)] });
+
+    let dateLine = '';
+    try { dateLine = new Intl.DateTimeFormat('en-US', { timeZone: homeZone, weekday: 'long', month: 'long', day: 'numeric' }).format(now); } catch (e) { dateLine = ''; }
+
+    const defs = [
+      [P.clock1City ?? 'Kathmandu', P.clock1Zone ?? 'Asia/Kathmandu'],
+      [P.clock2City ?? 'London', P.clock2Zone ?? 'Europe/London'],
+      [P.clock3City ?? 'Tokyo', P.clock3Zone ?? 'Asia/Tokyo']
+    ];
+    const clocks = defs.map(([city, zone]) => {
+      const p = this.parts(zone, now);
+      return h24 ? { city, t: pad(p.h) + ':' + pad(p.mi), ap: '' } : { city, t: (p.h % 12 || 12) + ':' + pad(p.mi), ap: p.h < 12 ? 'AM' : 'PM' };
+    });
+
+    const unitC = (P.unit ?? 'F') === 'C';
+    const temp = (unitC ? Math.round((58 - 32) * 5 / 9) : 58) + '°';
+
+    const scenes = {
+      Dusk: { skyTop: '#16213f', skyMid: '#4f4372', horizon: '#e39470', orb: '#ffd2a0', orbR: 70, m1: '#64568a', m2: '#3b3864', m3: '#222546', m4: '#11142a', stars: false },
+      Night: { skyTop: '#04060f', skyMid: '#0c1734', horizon: '#22406a', orb: '#e9eefc', orbR: 34, m1: '#1c2a4c', m2: '#13203e', m3: '#0c162e', m4: '#060b1a', stars: true },
+      Forest: { skyTop: '#0e2629', skyMid: '#3a7470', horizon: '#c8d8b2', orb: '#fff3cf', orbR: 56, m1: '#2e5d5a', m2: '#1e4542', m3: '#133230', m4: '#0a1d1c', stars: false }
+    };
+    const sc = scenes[P.scene ?? 'Night'] || scenes.Night;
+
+    return {
+      sc, dim: P.dim ?? 0.35, groups, ap, showAp: !h24, dateLine, clocks, temp,
+      weatherCity: P.weatherCity ?? 'Columbus',
+      aria: 'Time ' + hh + ':' + pad(hp.mi) + (h24 ? '' : ' ' + ap)
+    };
+  }
+}
+</script>
+</body>
+</html>

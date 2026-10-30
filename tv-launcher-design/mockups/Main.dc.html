@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>TV Home Screen</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@200;300;400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#cfe0ff}a:hover{color:#ffffff}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 1920px; height: 1080px; position: relative; overflow: hidden; font-family: 'Outfit', system-ui, sans-serif; color: #ffffff; background: #0b0e1a">
+
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" aria-hidden="true" style="position: absolute; inset: 0">
+<defs>
+<linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+<stop offset="0" stop-color="{{sc.skyTop}}"></stop>
+<stop offset="0.55" stop-color="{{sc.skyMid}}"></stop>
+<stop offset="1" stop-color="{{sc.horizon}}"></stop>
+</linearGradient>
+</defs>
+<rect x="0" y="0" width="1920" height="1080" fill="url(#sky)"></rect>
+<sc-if value="{{sc.stars}}" hint-placeholder-val="{{ false }}">
+<g fill="#ffffff">
+<circle cx="140" cy="90" r="1.6" opacity="0.8"></circle>
+<circle cx="320" cy="180" r="1.2" opacity="0.6"></circle>
+<circle cx="610" cy="70" r="1.8" opacity="0.9"></circle>
+<circle cx="840" cy="210" r="1.1" opacity="0.5"></circle>
+<circle cx="1010" cy="120" r="1.5" opacity="0.7"></circle>
+<circle cx="1330" cy="60" r="1.2" opacity="0.6"></circle>
+<circle cx="1520" cy="170" r="1.7" opacity="0.8"></circle>
+<circle cx="1710" cy="95" r="1.3" opacity="0.7"></circle>
+<circle cx="1860" cy="230" r="1.1" opacity="0.5"></circle>
+<circle cx="460" cy="300" r="1.0" opacity="0.4"></circle>
+<circle cx="1180" cy="280" r="1.2" opacity="0.5"></circle>
+<circle cx="760" cy="340" r="0.9" opacity="0.4"></circle>
+</g>
+</sc-if>
+<circle cx="1240" cy="470" r="{{sc.orbR}}" fill="{{sc.orb}}" opacity="0.9"></circle>
+<path d="M0 620 L180 540 L320 590 L520 470 L700 560 L860 500 L1040 580 L1240 450 L1420 540 L1600 480 L1780 560 L1920 510 L1920 1080 L0 1080 Z" fill="{{sc.m1}}"></path>
+<path d="M0 720 L160 650 L340 700 L540 610 L760 690 L960 630 L1160 710 L1380 620 L1580 690 L1760 640 L1920 680 L1920 1080 L0 1080 Z" fill="{{sc.m2}}"></path>
+<path d="M0 820 L220 760 L460 800 L700 740 L940 800 L1200 750 L1460 810 L1700 770 L1920 800 L1920 1080 L0 1080 Z" fill="{{sc.m3}}"></path>
+<path d="M0 930 C300 890 600 950 960 910 C1320 870 1600 940 1920 900 L1920 1080 L0 1080 Z" fill="{{sc.m4}}"></path>
+</svg>
+
+<div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0) 32%, rgba(0,0,0,0) 52%, rgba(0,0,0,0.62) 100%)"></div>
+
+<div style="position: absolute; inset: 0; box-sizing: border-box; padding: 60px 96px 56px; display: flex; flex-direction: column">
+
+<header style="display: flex; justify-content: space-between; align-items: center; height: 56px">
+<div style="display: flex; align-items: center; gap: 16px">
+<span style="font-size: 30px; font-weight: 400">{{greeting}}</span>
+<span style="display: flex; align-items: center; gap: 8px; font-size: 22px; color: rgba(255,255,255,0.78)">
+<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.5"></circle></svg>
+{{homeCity}}
+</span>
+</div>
+<nav style="display: flex; gap: 16px" aria-label="Quick actions">
+<button aria-label="Ask Gemini" style="height: 56px; padding: 0 26px 0 18px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.28); background: rgba(255,255,255,0.18); backdrop-filter: blur(20px); color: #ffffff; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: 22px; font-weight: 500">
+<span style="width: 36px; height: 36px; border-radius: 18px; background: {{accent}}; color: #0b0e1a; display: flex; align-items: center; justify-content: center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path></svg></span>
+Ask Gemini
+</button>
+<button aria-label="Search" style="width: 56px; height: 56px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.10); backdrop-filter: blur(20px); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+</button>
+<button aria-label="Input source" style="width: 56px; height: 56px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.10); backdrop-filter: blur(20px); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"></rect><path d="M8 21h8M12 17v4"></path></svg>
+</button>
+<button aria-label="Settings" style="width: 56px; height: 56px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.10); backdrop-filter: blur(20px); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg>
+</button>
+<button aria-label="Profile" style="width: 56px; height: 56px; border-radius: 28px; border: 1px solid rgba(255,255,255,0.18); background: rgba(255,255,255,0.10); backdrop-filter: blur(20px); color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer">
+<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>
+</button>
+</nav>
+</header>
+
+<section style="display: flex; justify-content: space-between; align-items: flex-end; margin-top: 44px" aria-label="Time and weather">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; align-items: baseline; gap: 18px">
+<span style="font-size: 220px; font-weight: 200; line-height: 0.9; letter-spacing: -8px; font-variant-numeric: tabular-nums">{{home.t}}</span>
+<span style="font-size: 52px; font-weight: 300; color: rgba(255,255,255,0.85)">{{home.ap}}</span>
+</div>
+<span style="font-size: 36px; font-weight: 300; color: rgba(255,255,255,0.88); padding-left: 8px">{{dateLine}}</span>
+</div>
+
+<div style="width: 580px; box-sizing: border-box; padding: 28px 32px; border-radius: 28px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(28px); display: flex; flex-direction: column; gap: 22px">
+<div style="display: flex; align-items: center; gap: 22px">
+<svg width="84" height="84" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3"></circle><path d="M9 3v1.2M3 9h1.2M4.8 4.8l.9.9M13.2 4.8l-.9.9"></path><path d="M9 20h8a3.5 3.5 0 0 0 0-7 4.5 4.5 0 0 0-8.6 1.2A3 3 0 0 0 9 20z" fill="rgba(255,255,255,0.12)"></path></svg>
+<span style="font-size: 96px; font-weight: 300; line-height: 1">{{w.now}}</span>
+<div style="display: flex; flex-direction: column; gap: 4px; margin-left: auto; text-align: right">
+<span style="font-size: 28px; font-weight: 500">Partly cloudy</span>
+<span style="font-size: 22px; color: rgba(255,255,255,0.8)">H {{w.hi}}  ·  L {{w.lo}}</span>
+<span style="font-size: 20px; color: rgba(255,255,255,0.7)">{{weatherCity}}</span>
+</div>
+</div>
+<div style="height: 1px; background: rgba(255,255,255,0.16)"></div>
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px">
+<sc-for list="{{forecast}}" as="f" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+<span style="font-size: 20px; color: rgba(255,255,255,0.78)">{{f.day}}</span>
+<sc-if value="{{f.isSun}}" hint-placeholder-val="{{ false }}">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></svg>
+</sc-if>
+<sc-if value="{{f.isPartly}}" hint-placeholder-val="{{ true }}">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="9" r="3"></circle><path d="M9 3v1.2M3 9h1.2M4.8 4.8l.9.9M13.2 4.8l-.9.9"></path><path d="M9 20h8a3.5 3.5 0 0 0 0-7 4.5 4.5 0 0 0-8.6 1.2A3 3 0 0 0 9 20z"></path></svg>
+</sc-if>
+<sc-if value="{{f.isCloud}}" hint-placeholder-val="{{ false }}">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7 18z"></path></svg>
+</sc-if>
+<sc-if value="{{f.isRain}}" hint-placeholder-val="{{ false }}">
+<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 14h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.6 1.5A3.5 3.5 0 0 0 7 14z"></path><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"></path></svg>
+</sc-if>
+<span style="font-size: 22px"><span style="font-weight: 500">{{f.hi}}</span> <span style="color: rgba(255,255,255,0.65)">{{f.lo}}</span></span>
+</div>
+</sc-for>
+</div>
+</div>
+</section>
+
+<section style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; margin-top: 40px" aria-label="World clocks">
+<sc-for list="{{clocks}}" as="c" hint-placeholder-count="3">
+<div style="box-sizing: border-box; height: 152px; padding: 22px 28px; border-radius: 28px; background: rgba(255,255,255,0.10); border: 1px solid rgba(255,255,255,0.16); backdrop-filter: blur(28px); display: flex; align-items: center; gap: 26px; position: relative">
+<svg width="104" height="104" viewBox="0 0 100 100" role="img" aria-label="{{c.aria}}">
+<circle cx="50" cy="50" r="47" fill="{{c.face}}" stroke="rgba(255,255,255,0.28)" stroke-width="1.5"></circle>
+<g stroke="rgba(255,255,255,0.6)" stroke-width="2.5" stroke-linecap="round">
+<line x1="50" y1="8" x2="50" y2="14"></line>
+<line x1="92" y1="50" x2="86" y2="50"></line>
+<line x1="50" y1="92" x2="50" y2="86"></line>
+<line x1="8" y1="50" x2="14" y2="50"></line>
+</g>
+<line x1="50" y1="50" x2="50" y2="27" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" transform="rotate({{c.hDeg}} 50 50)"></line>
+<line x1="50" y1="50" x2="50" y2="16" stroke="#ffffff" stroke-width="3" stroke-linecap="round" transform="rotate({{c.mDeg}} 50 50)"></line>
+<line x1="50" y1="58" x2="50" y2="14" stroke="{{accent}}" stroke-width="1.5" stroke-linecap="round" transform="rotate({{c.sDeg}} 50 50)"></line>
+<circle cx="50" cy="50" r="3.5" fill="{{accent}}"></circle>
+</svg>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-size: 26px; font-weight: 500">{{c.city}}</span>
+<span style="font-size: 46px; font-weight: 300; line-height: 1.05; font-variant-numeric: tabular-nums">{{c.t}} <span style="font-size: 22px; color: rgba(255,255,255,0.8)">{{c.ap}}</span></span>
+<span style="font-size: 20px; color: rgba(255,255,255,0.75)">{{c.meta}}</span>
+</div>
+<span style="position: absolute; top: 22px; right: 24px; color: rgba(255,255,255,0.8)">
+<sc-if value="{{c.isDay}}" hint-placeholder-val="{{ true }}">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"></path></svg>
+</sc-if>
+<sc-if value="{{c.isNight}}" hint-placeholder-val="{{ false }}">
+<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"></path></svg>
+</sc-if>
+</span>
+</div>
+</sc-for>
+</section>
+
+<section style="margin-top: auto; display: flex; flex-direction: column; gap: 18px" aria-label="Apps">
+<div style="display: flex; justify-content: space-between; align-items: baseline">
+<span style="font-size: 26px; font-weight: 500; color: rgba(255,255,255,0.9)">Your apps</span>
+<span style="font-size: 20px; color: rgba(255,255,255,0.7)">Hold OK to rearrange</span>
+</div>
+<div style="display: flex; gap: 26px; align-items: flex-start">
+<sc-for list="{{apps}}" as="a" hint-placeholder-count="9">
+<div style="display: flex; flex-direction: column; align-items: center; gap: 12px">
+<button aria-label="{{a.name}}" onClick="{{a.pick}}" onFocus="{{a.pick}}" style="width: 172px; height: 104px; box-sizing: border-box; border-radius: 20px; border: 3px solid {{a.ring}}; background: {{a.bg}}; color: #ffffff; display: flex; align-items: center; justify-content: center; cursor: pointer; transform: scale({{a.scale}}); box-shadow: {{a.shadow}}; transition: transform 160ms ease, box-shadow 160ms ease; outline: none">
+<sc-if value="{{a.isAll}}" hint-placeholder-val="{{ false }}">
+<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.5"></rect><rect x="14" y="4" width="6" height="6" rx="1.5"></rect><rect x="4" y="14" width="6" height="6" rx="1.5"></rect><rect x="14" y="14" width="6" height="6" rx="1.5"></rect></svg>
+</sc-if>
+<sc-if value="{{a.isApp}}" hint-placeholder-val="{{ true }}">
+<span style="font-size: 40px; font-weight: 600; letter-spacing: -1px">{{a.mono}}</span>
+</sc-if>
+</button>
+<span style="font-size: 19px; opacity: {{a.labelOpacity}}">{{a.name}}</span>
+</div>
+</sc-for>
+</div>
+</section>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"scene":{"editor":"enum","options":["Dusk","Night","Forest"],"default":"Dusk","section":"Look"},"accent":{"editor":"color","default":"#8FB8FF","options":["#8FB8FF","#FFB27A","#7FE0C2","#F2A7D8"],"section":"Look"},"use24h":{"editor":"boolean","default":false,"section":"Clocks"},"homeCity":{"editor":"text","default":"Columbus","section":"Clocks"},"homeZone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"America/New_York","section":"Clocks"},"clock1City":{"editor":"text","default":"Kathmandu","section":"Clocks"},"clock1Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Asia/Kathmandu","section":"Clocks"},"clock2City":{"editor":"text","default":"London","section":"Clocks"},"clock2Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Europe/London","section":"Clocks"},"clock3City":{"editor":"text","default":"Tokyo","section":"Clocks"},"clock3Zone":{"editor":"enum","options":["Pacific/Honolulu","America/Los_Angeles","America/Denver","America/Chicago","America/New_York","America/Sao_Paulo","UTC","Europe/London","Europe/Paris","Europe/Berlin","Africa/Cairo","Asia/Dubai","Asia/Kolkata","Asia/Kathmandu","Asia/Singapore","Asia/Shanghai","Asia/Tokyo","Australia/Sydney","Pacific/Auckland"],"default":"Asia/Tokyo","section":"Clocks"},"weatherCity":{"editor":"text","default":"Columbus, OH","section":"Weather"},"unit":{"editor":"enum","options":["F","C"],"default":"F","section":"Weather"},"$preview":{"width":1920,"height":1080}}'>
+class Component extends DCLogic {
+  componentDidMount() {
+    this.timer = setInterval(() => this.forceUpdate(), 1000);
+  }
+  componentWillUnmount() {
+    clearInterval(this.timer);
+  }
+  parts(zone, now) {
+    try {
+      const f = new Intl.DateTimeFormat('en-US', { timeZone: zone, year: 'numeric', month: 'numeric', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' });
+      const o = {};
+      f.formatToParts(now).forEach((p) => { o[p.type] = p.value; });
+      return { y: +o.year, mo: +o.month, d: +o.day, h: (+o.hour) % 24, mi: +o.minute, s: +o.second };
+    } catch (e) {
+      const d = new Date(now);
+      return { y: d.getFullYear(), mo: d.getMonth() + 1, d: d.getDate(), h: d.getHours(), mi: d.getMinutes(), s: d.getSeconds() };
+    }
+  }
+  fmt(p, h24) {
+    const pad = (n) => String(n).padStart(2, '0');
+    if (h24) return { t: pad(p.h) + ':' + pad(p.mi), ap: '' };
+    return { t: (p.h % 12 || 12) + ':' + pad(p.mi), ap: p.h < 12 ? 'AM' : 'PM' };
+  }
+  renderVals() {
+    const P = this.props;
+    const now = Date.now();
+    const h24 = !!(P.use24h ?? false);
+    const accent = P.accent ?? '#8FB8FF';
+    const homeZone = P.homeZone ?? 'America/New_York';
+    const hp = this.parts(homeZone, now);
+    const toMin = (p) => Date.UTC(p.y, p.mo - 1, p.d, p.h, p.mi) / 60000;
+    const toDay = (p) => Date.UTC(p.y, p.mo - 1, p.d) / 86400000;
+
+    let dateLine = '';
+    try {
+      dateLine = new Intl.DateTimeFormat('en-US', { timeZone: homeZone, weekday: 'long', month: 'long', day: 'numeric' }).format(now);
+    } catch (e) { dateLine = ''; }
+    const greeting = hp.h < 5 ? 'Good night' : hp.h < 12 ? 'Good morning' : hp.h < 17 ? 'Good afternoon' : 'Good evening';
+
+    const defs = [
+      [P.clock1City ?? 'Kathmandu', P.clock1Zone ?? 'Asia/Kathmandu'],
+      [P.clock2City ?? 'London', P.clock2Zone ?? 'Europe/London'],
+      [P.clock3City ?? 'Tokyo', P.clock3Zone ?? 'Asia/Tokyo']
+    ];
+    const clocks = defs.map(([city, zone]) => {
+      const p = this.parts(zone, now);
+      const f = this.fmt(p, h24);
+      const diff = Math.round((toMin(p) - toMin(hp)) / 15) * 15;
+      let off = 'Same time';
+      if (diff !== 0) {
+        const a = Math.abs(diff);
+        const hh = Math.floor(a / 60);
+        const mm = a % 60;
+        off = (diff > 0 ? '+' : '−') + hh + 'h' + (mm ? ' ' + mm + 'm' : '');
+      }
+      const dd = toDay(p) - toDay(hp);
+      const day = dd > 0 ? 'Tomorrow' : dd < 0 ? 'Yesterday' : 'Today';
+      const isDay = p.h >= 6 && p.h < 18;
+      return {
+        city, t: f.t, ap: f.ap,
+        meta: day + '  ·  ' + off,
+        hDeg: ((p.h % 12) + p.mi / 60) * 30,
+        mDeg: (p.mi + p.s / 60) * 6,
+        sDeg: p.s * 6,
+        isDay, isNight: !isDay,
+        face: isDay ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.28)',
+        aria: 'Clock for ' + city + ', ' + f.t + ' ' + f.ap
+      };
+    });
+
+    const unitC = (P.unit ?? 'F') === 'C';
+    const T = (f) => (unitC ? Math.round((f - 32) * 5 / 9) : f) + '°';
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const dow = new Date(Date.UTC(hp.y, hp.mo - 1, hp.d)).getUTCDay();
+    const sample = [['sun', 64, 46], ['cloud', 59, 44], ['rain', 55, 41], ['partly', 60, 43]];
+    const forecast = sample.map(([k, hi, lo], i) => ({
+      day: days[(dow + i + 1) % 7], hi: T(hi), lo: T(lo),
+      isSun: k === 'sun', isPartly: k === 'partly', isCloud: k === 'cloud', isRain: k === 'rain'
+    }));
+
+    const names = ['YouTube', 'Netflix', 'Prime Video', 'Disney+', 'Spotify', 'Plex', 'Photos', 'Browser', 'All apps'];
+    const tones = ['#3b2f52', '#4a2b36', '#233a4d', '#24315a', '#1e3f36', '#423823', '#2c3d4a', '#343844', 'rgba(255,255,255,0.12)'];
+    const focus = (this.state && this.state.focus) ?? 0;
+    const apps = names.map((name, i) => {
+      const on = i === focus;
+      return {
+        name, mono: name.charAt(0),
+        isAll: name === 'All apps', isApp: name !== 'All apps',
+        bg: tones[i],
+        ring: on ? '#ffffff' : 'rgba(255,255,255,0.10)',
+        scale: on ? 1.1 : 1,
+        shadow: on ? '0 18px 40px rgba(0,0,0,0.45), 0 0 0 6px ' + accent + '55' : '0 6px 16px rgba(0,0,0,0.25)',
+        labelOpacity: on ? 1 : 0.7,
+        pick: () => this.setState({ focus: i })
+      };
+    });
+
+    const scenes = {
+      Dusk: { skyTop: '#16213f', skyMid: '#4f4372', horizon: '#e39470', orb: '#ffd2a0', orbR: 70, m1: '#64568a', m2: '#3b3864', m3: '#222546', m4: '#11142a', stars: false },
+      Night: { skyTop: '#04060f', skyMid: '#0c1734', horizon: '#22406a', orb: '#e9eefc', orbR: 34, m1: '#1c2a4c', m2: '#13203e', m3: '#0c162e', m4: '#060b1a', stars: true },
+      Forest: { skyTop: '#0e2629', skyMid: '#3a7470', horizon: '#c8d8b2', orb: '#fff3cf', orbR: 56, m1: '#2e5d5a', m2: '#1e4542', m3: '#133230', m4: '#0a1d1c', stars: false }
+    };
+    const sc = scenes[P.scene ?? 'Dusk'] || scenes.Dusk;
+
+    return {
+      sc, accent, greeting, dateLine,
+      homeCity: P.homeCity ?? 'Columbus',
+      home: this.fmt(hp, h24),
+      clocks,
+      weatherCity: P.weatherCity ?? 'Columbus, OH',
+      w: { now: T(58), hi: T(63), lo: T(47) },
+      forecast, apps
+    };
+  }
+}
+</script>
+</body>
+</html>
