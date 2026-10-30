@@ -1,9 +1,62 @@
 # Home takeover switch-over report (2026-10-30)
 
-**Status: BLOCKED at Step 2. The stock launcher was never disabled. The stop rule did not fire.**
-The TV is in its original state: `home-status` prints
-`com.google.android.apps.tv.launcherx/.home.HomeActivity` / `launcherx disabled: 0`, and the
-preferred HOME activity is launcherx again (`dumpsys package preferred-xml`).
+**Status: BLOCKED at Step 2, twice.** Attempt 1 (verify-before-disable gate) never disabled
+anything. Attempt 2 (amended `home-take`, option 1) failed: the shell may not disable
+setupwraith's RecoveryActivity, and when launcherx was disabled RecoveryActivity took Home for
+about 1 s and re-enabled launcherx itself. `home-take` auto-restored. The stop rule (black screen /
+crash / dead Home key) never fired. The TV is in its original state:
+`home-status` prints
+`com.google.android.apps.tv.launcherx/.home.HomeActivity` / `launcherx disabled: 0` /
+`recovery disabled: 0`, and the preferred HOME activity is launcherx (`dumpsys package preferred-xml`).
+
+## Attempt 2 (after the amendment, commit 540dc02), 10:50
+
+Raw `tools/tv.sh home-take` output (stack traces trimmed):
+
+    set-home-activity: Success
+    pm disable-user RecoveryActivity:
+    Exception occurred while executing 'disable-user':
+    java.lang.SecurityException: Shell cannot change component state for ComponentInfo{com.google.android.tungsten.setupwraith/com.google.android.tungsten.setupwraith.RecoveryActivity} to 3
+    pm disable-user launcherx: Package com.google.android.apps.tv.launcherx new state: disabled-user
+    Home resolves to 'com.google.android.tungsten.setupwraith/.RecoveryActivity', not com.nickesh.tvlauncher/.MainActivity; restoring
+    pm enable launcherx: Package com.google.android.apps.tv.launcherx new state: enabled
+    pm enable RecoveryActivity:
+    java.lang.SecurityException: Shell cannot change component state for ComponentInfo{...RecoveryActivity} to 1
+    set-home-activity: Success
+    com.google.android.apps.tv.launcherx/.home.HomeActivity
+    launcherx disabled: 0
+    recovery disabled: 1
+    RecoveryActivity still disabled
+    (exit 1)
+
+What the device did (logcat), in the ~1 s launcherx was disabled:
+
+    10:50:45.362 START u0 {act=MAIN cat=[HOME] cmp=com.google.android.tungsten.setupwraith/.RecoveryActivity}
+    10:50:46.210 W/SetupWraith|RecoveryActivity: Reenabling disabled home activity
+    10:50:46.518 START u0 {act=MAIN cat=[HOME] cmp=com.google.android.apps.tv.launcherx/.home.HomeActivity}
+    10:50:46.520 D/SetupWraith|RecoveryActivity: temporarily disable self
+    10:50:47.681 Scheduling work ... (com.google.android.tvsetup.app.util.EnableRecoveryActivityWorker)
+    10:51:55.171 D/SetupWraith|EnableRecoveryActivityWorker: Fallback home successfully enabled
+
+So:
+
+- RecoveryActivity's enabled state is protected from the shell (`SecurityException ... to 3` /
+  `to 1`); option 1 cannot be done over adb.
+- RecoveryActivity is a watchdog: whenever Home would fall through to it, it re-enables launcherx,
+  launches it, disables itself for about 70 s, then a WorkManager job re-enables it. Any
+  `pm disable-user` of launcherx is undone the first time Home is resolved.
+- The `recovery disabled: 1` that home-take/home-restore printed was setupwraith disabling *itself*
+  (it was not our doing; the shell call had failed). It went back to 0 at 10:51:55 with no action
+  from us. The home-restore exit 1 ("RecoveryActivity still disabled") was accurate at that moment.
+- Confirmed `pm` strings: `new state: disabled-user` and `new state: enabled` (both exact).
+- The screen showed setupwraith's RecoveryActivity for about 1 s (not screenshotted; Nickesh may
+  have seen it), then the stock home. Screenshot after: `takeover-after-failed-take` (stock home).
+
+Not tried, and outside the rules: exploiting the ~70 s window where RecoveryActivity is self-disabled
+(it re-arms itself, so this is never stable), disabling the setupwraith package, root or
+device-owner. Ways to own the Home button without disabling anything (for example an
+accessibility service that catches the Home key, which some third-party TV launchers use) would
+need a new spec.
 
 ## Why it stopped
 
@@ -34,7 +87,7 @@ equal priority; a strictly higher-priority system candidate wins outright. So:
 
 Also present: a second user (user 10) with its own preferred HOME = launcherx.
 
-## Options for Nickesh (none taken)
+## Options considered after attempt 1 (option 1 was ruled and tried in attempt 2; it fails)
 
 1. Also disable `com.google.android.tungsten.setupwraith` (or just its RecoveryActivity component,
    `pm disable-user`/`pm disable --user 0 <component>`) in `home-take`, and re-enable it in
@@ -71,11 +124,11 @@ Not run (no takeover). No `onNewIntent`-from-Home or replay logcat excerpts exis
 ## The four check items
 
 1. Second instance: not checkable (no takeover).
-2. Restore from the TV (app-details Enable control): not checkable (launcherx never disabled).
-   README wording unchanged.
-3. `pm` strings: `pm enable com.google.android.apps.tv.launcherx` prints
-   `Package com.google.android.apps.tv.launcherx new state: enabled` even when it was already
-   enabled, so home-restore's gate matches. `new state: disabled-user` remains unconfirmed.
+2. Restore from the TV (app-details Enable control): not checkable (launcherx was disabled for
+   about 1 s only). README wording unchanged.
+3. `pm` strings, both confirmed: `Package com.google.android.apps.tv.launcherx new state: disabled-user`
+   and `... new state: enabled` (also printed when already enabled). The component calls fail with
+   `java.lang.SecurityException: Shell cannot change component state for ComponentInfo{...} to 3|1`.
 4. Home with both enabled: stock launcher, no chooser.
 
-Stop rule: never fired (nothing was disabled).
+Stop rule: never fired. home-take's own verify-after-disable gate restored the stock launcher.
