@@ -16,7 +16,7 @@ import com.nickesh.tvlauncher.domain.clock.ClockSnapshot
 import com.nickesh.tvlauncher.domain.clock.ClockWeather
 import com.nickesh.tvlauncher.domain.clock.TimeText
 import java.time.Instant
-import java.time.ZoneId
+import com.nickesh.tvlauncher.domain.clock.ZoneIds
 import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
@@ -132,7 +132,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                             var ok = false
                             try {
                                 val snap = weatherRepo.load(place, unit, zone)
-                                val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
+                                val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneIds.safe(zone))) }
                                 _weatherByKey.update { it + (key to PlaceWeather(place, ui)) }
                                 _currentByKey.update { it + (key to PlaceWeather(place, snap?.let(weatherRepo::toCurrent))) }
                                 // The home card needs the day columns; a clock card only needs current conditions.
@@ -180,7 +180,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
         current: Map<String, PlaceWeather<ClockWeather>>,
         now: Instant,
     ): HomeUiState {
-        val home = now.atZone(ZoneId.of(settings.homeZone))
+        val home = now.atZone(ZoneIds.safe(settings.homeZone))
         val places = Places.fromSettings(settings)
         return HomeUiState(
             greeting = ClockMath.greeting(home.hour, settings.name),

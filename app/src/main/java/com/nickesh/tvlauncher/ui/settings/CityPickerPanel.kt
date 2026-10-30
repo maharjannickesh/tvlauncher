@@ -2,6 +2,7 @@ package com.nickesh.tvlauncher.ui.settings
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -20,6 +21,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -31,7 +33,6 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
-import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,7 +47,6 @@ import com.nickesh.tvlauncher.ui.theme.dpx
 import com.nickesh.tvlauncher.ui.theme.spx
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Open-Meteo's geocoder needs at least this many characters; shorter queries never hit the network. */
@@ -83,6 +83,7 @@ fun CityPickerPanel(
     fun runSearch(q: String) {
         job?.cancel()
         results = emptyList()
+        if (q.isEmpty()) { status = null; return } // Done on the empty field (placeholder only) searches nothing
         if (q.length < MIN_QUERY) { status = "No matches"; return }
         status = "Searching…"
         job = scope.launch {
@@ -144,6 +145,7 @@ fun CityPickerPanel(
                 QueryRow(
                     label = "City",
                     value = query,
+                    placeholder = city,
                     rowRequester = cityRow,
                     modifier = Modifier.onFocusChanged { cityFocused = it.hasFocus }.onPreviewKeyEvent { e ->
                         !editing && e.type == KeyEventType.KeyDown && e.key == Key.DirectionUp // top edge of the panel
@@ -205,19 +207,21 @@ private fun MatchRow(m: GeoMatch, modifier: Modifier, onClick: () -> Unit) {
 
 /**
  * The `City` search field, after the [TextSettingRow] pattern: OK edits, Done hands the trimmed text to [onDone],
- * Back or moving away abandons the edit. Editing starts with the whole text selected so typing replaces it.
+ * Back or moving away abandons the edit. Editing starts on an EMPTY field with [placeholder] (the current city) shown
+ * greyed, so typing can never append to the old name (the TV keyboard defeats any select-all).
  */
 @Composable
 private fun QueryRow(
     label: String,
     value: String,
+    placeholder: String,
     rowRequester: FocusRequester,
     modifier: Modifier = Modifier,
     onEditing: (Boolean) -> Unit,
     onDone: (String) -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
-    var text by remember { mutableStateOf(TextFieldValue(value)) }
+    var text by remember { mutableStateOf(TextFieldValue("")) }
     var hadFocus by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
     fun setEditing(on: Boolean) { editing = on; onEditing(on) }
@@ -225,16 +229,12 @@ private fun QueryRow(
     LaunchedEffect(editing) {
         if (editing) {
             runCatching { requester.requestFocus() }
-            // The IME resets the selection when it attaches; select all again after it settles so typing replaces the text.
-            repeat(3) { withFrameNanos { } }
-            delay(150)
-            text = text.copy(selection = TextRange(0, text.text.length))
         } else if (hadFocus) { hadFocus = false; runCatching { rowRequester.requestFocus() } } // Done/Back, not focus moved away
     }
     SettingRow(
         label,
         modifier.focusRequester(rowRequester),
-        onClick = { text = TextFieldValue(value, TextRange(0, value.length)); hadFocus = false; setEditing(true) },
+        onClick = { text = TextFieldValue(""); hadFocus = false; setEditing(true) },
     ) {
         if (editing) {
             BasicTextField(
@@ -251,6 +251,14 @@ private fun QueryRow(
                 }),
                 modifier = Modifier.size(width = 420.dpx(), height = 40.dpx()).focusRequester(requester)
                     .onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && editing) { setEditing(false); hadFocus = false } },
+                decorationBox = { inner ->
+                    Box(contentAlignment = Alignment.CenterEnd) {
+                        if (text.text.isEmpty()) {
+                            Text(placeholder, color = Color.White.copy(alpha = 0.5f), fontFamily = Outfit, fontSize = 24.spx(), maxLines = 1)
+                        }
+                        inner()
+                    }
+                },
             )
         } else {
             ValueText(value)

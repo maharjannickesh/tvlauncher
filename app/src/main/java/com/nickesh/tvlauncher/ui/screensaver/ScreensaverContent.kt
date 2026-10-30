@@ -33,7 +33,7 @@ import com.nickesh.tvlauncher.ui.home.icon
 import com.nickesh.tvlauncher.ui.theme.Outfit
 import com.nickesh.tvlauncher.ui.theme.dpx
 import com.nickesh.tvlauncher.ui.theme.spx
-import java.time.ZoneId
+import com.nickesh.tvlauncher.domain.clock.ZoneIds
 import java.time.ZonedDateTime
 
 private val SHIFTS = listOf(-24 to -24, 24 to -24, 24 to 24, -24 to 24)
@@ -43,7 +43,7 @@ internal fun burnInShift(now: ZonedDateTime): Pair<Int, Int> = SHIFTS[((now.toEp
 
 @Composable
 fun ScreensaverContent(settings: Settings, weather: WeatherUi?, clocks: List<ClockSnapshot>, now: ZonedDateTime) {
-    val home = now.withZoneSameInstant(ZoneId.of(settings.homeZone))
+    val home = now.withZoneSameInstant(ZoneIds.safe(settings.homeZone))
     val digits = FlipDigitsCalc.from(home, settings.use24h, settings.screensaverSeconds)
     val (dx, dy) = burnInShift(now)
     Box(Modifier.fillMaxSize()) {

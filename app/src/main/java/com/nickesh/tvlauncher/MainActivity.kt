@@ -171,7 +171,7 @@ class MainActivity : ComponentActivity() {
                                         if (minutes != null && minutes != idleBefore &&
                                             !IdleTimer.writeIdleMinutes(this@MainActivity, minutes)
                                         ) {
-                                            Toast.makeText(this@MainActivity, "Screensaver timer needs 'Modify system settings' — tap the row to grant", Toast.LENGTH_LONG).show()
+                                            Toast.makeText(this@MainActivity, "Screensaver timer not saved — grant 'Modify system settings' over adb: tools/tv.sh idle-perm", Toast.LENGTH_LONG).show()
                                         }
                                         screen = Screen.Home
                                     }

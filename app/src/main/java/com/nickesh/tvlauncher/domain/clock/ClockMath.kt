@@ -4,7 +4,6 @@ import com.nickesh.tvlauncher.data.settings.WorldClock
 import com.nickesh.tvlauncher.ui.home.WeatherKind
 import java.time.Instant
 import java.time.LocalDateTime
-import java.time.ZoneId
 import java.time.ZoneOffset
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
@@ -81,7 +80,7 @@ object ClockMath {
     }
 
     fun snapshot(clock: WorldClock, home: ZonedDateTime, now: Instant, use24h: Boolean, weather: ClockWeather? = null): ClockSnapshot {
-        val other = now.atZone(ZoneId.of(clock.zoneId))
+        val other = now.atZone(ZoneIds.safe(clock.zoneId))
         val (hourDeg, minuteDeg, secondDeg) = dialAngles(other)
         return ClockSnapshot(
             city = clock.city,

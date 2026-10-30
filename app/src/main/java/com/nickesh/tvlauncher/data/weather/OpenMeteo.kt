@@ -3,6 +3,7 @@ package com.nickesh.tvlauncher.data.weather
 import com.nickesh.tvlauncher.data.settings.TempUnit
 import java.io.IOException
 import java.net.URLEncoder
+import java.time.ZoneId
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -27,6 +28,7 @@ data class Forecast(val current: Current, val daily: Daily) {
     )
 }
 
+/** A geocoder match whose [timezone] is known to this device's tzdata (see [GeoMatches.valid]). */
 @Serializable
 data class GeoMatch(
     val name: String,
@@ -39,8 +41,29 @@ data class GeoMatch(
     val label: String get() = listOfNotNull(name, admin1, country).joinToString(", ")
 }
 
+/** One raw geocoder result as sent: Open-Meteo may omit the time zone, or name one this TV's tzdata lacks. */
 @Serializable
-internal data class GeoResponse(val results: List<GeoMatch>? = null)
+internal data class GeoHit(
+    val name: String,
+    val admin1: String? = null,
+    val country: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val timezone: String? = null,
+)
+
+@Serializable
+internal data class GeoResponse(val results: List<GeoHit>? = null)
+
+internal object GeoMatches {
+    /**
+     * Keeps only hits whose time zone is present and in [available] (the device's `ZoneId.getAvailableZoneIds()`),
+     * so a picked match can never persist a zone that `ZoneId.of` would reject.
+     */
+    fun valid(hits: List<GeoHit>, available: Set<String>): List<GeoMatch> = hits.mapNotNull { h ->
+        h.timezone?.takeIf { it in available }?.let { GeoMatch(h.name, h.admin1, h.country, h.latitude, h.longitude, it) }
+    }
+}
 
 interface WeatherApi {
     /** Up to 8 matches, empty when nothing matches; throws on transport failure. */
@@ -64,9 +87,12 @@ class OpenMeteoClient(private val http: OkHttpClient, private val json: Json) : 
     }
 
     override suspend fun search(query: String): List<GeoMatch> =
-        json.decodeFromString<GeoResponse>(
-            get("https://geocoding-api.open-meteo.com/v1/search?name=${enc(query)}&count=8&language=en"),
-        ).results.orEmpty()
+        GeoMatches.valid(
+            json.decodeFromString<GeoResponse>(
+                get("https://geocoding-api.open-meteo.com/v1/search?name=${enc(query)}&count=8&language=en"),
+            ).results.orEmpty(),
+            ZoneId.getAvailableZoneIds(),
+        )
 
     override suspend fun forecast(lat: Double, lon: Double, unit: TempUnit, zone: String): Forecast {
         val u = if (unit == TempUnit.F) "fahrenheit" else "celsius"
