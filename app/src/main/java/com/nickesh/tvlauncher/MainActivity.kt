@@ -11,7 +11,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
@@ -33,27 +32,6 @@ import kotlin.math.max
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
-
-sealed interface Screen {
-    data object Welcome : Screen
-    data object Home : Screen
-    data object AllApps : Screen
-    data object Settings : Screen
-    data object Background : Screen
-}
-
-private val ScreenSaver = Saver<Screen, String>(
-    save = { it.toString() },
-    restore = {
-        when (it) {
-            "Welcome" -> Screen.Welcome
-            "AllApps" -> Screen.AllApps
-            "Settings" -> Screen.Settings
-            "Background" -> Screen.Background
-            else -> Screen.Home
-        }
-    },
-)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
