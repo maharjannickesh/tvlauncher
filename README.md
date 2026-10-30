@@ -62,7 +62,7 @@ The app declares the HOME intent filter and replays the Welcome splash after at 
 
 **Stop rule:** if after `home-take` the screen goes black, the app crashes, or the Home key does nothing, run `tools/tv.sh home-restore` straight away.
 
-**Remote-only restore** (no Mac): in TV Launcher, Settings -> "Google TV Home..." opens the stock launcher's app-details page. If the page offers Enable, press it. Note: while the launcher is enabled the page shows no Enable/Disable control, so this path only helps when it is disabled and the page offers Enable. Uninstalling TV Launcher also returns Home to the stock launcher once that is enabled again.
+**Remote-only restore** (no Mac): in TV Launcher, Settings -> "Google TV Home..." opens the stock launcher's app-details page. If the page offers Enable, press it. Note: while the launcher is enabled the page shows no Enable/Disable control, so this path only helps when it is disabled and the page offers Enable. To remove TV Launcher entirely: Enable the stock launcher first, then uninstall.
 
 **Wireless debugging turns itself off on standby; keep Stay awake on** (Developer options) so adb stays reachable, otherwise `home-restore` may not be possible after the TV sleeps.
 

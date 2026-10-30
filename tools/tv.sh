@@ -25,6 +25,20 @@ serial() {
   [ -n "$p" ] && echo "$HOST:$p"
 }
 
+OURS=com.nickesh.tvlauncher/.MainActivity
+STOCK_PKG=com.google.android.apps.tv.launcherx
+STOCK=$STOCK_PKG/.home.HomeActivity
+
+# Prints the current HOME component and whether the stock launcher is disabled (0|1).
+home_status() {
+  local s; s="$(serial)"
+  [ -n "$s" ] || { echo "TV not found" >&2; return 1; }
+  "$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1
+  local dis; dis="$("$ADB" -s "$s" shell pm list packages -d 2>&1)"
+  if [ -z "$dis" ]; then echo "launcherx disabled: unknown" >&2; return 1; fi
+  if printf '%s\n' "$dis" | tr -d '\r' | grep -qx "package:$STOCK_PKG"; then echo "launcherx disabled: 1"; else echo "launcherx disabled: 0"; fi
+}
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
   port) port ;;
@@ -58,27 +72,30 @@ case "$cmd" in
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
     "$ADB" -s "$s" shell service call dreams 2 >/dev/null ;; # IDreamManager.awaken()
-  home-status)
-    s="$(serial)"
-    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    "$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1
-    echo "launcherx disabled: $("$ADB" -s "$s" shell pm list packages -d | grep -c launcherx)" ;;
+  home-status) home_status ;;
   home-take)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    "$ADB" -s "$s" shell cmd package set-home-activity com.nickesh.tvlauncher/.MainActivity
-    "$ADB" -s "$s" shell pm disable-user --user 0 com.google.android.apps.tv.launcherx
-    "$0" home-status ;;
+    out="$("$ADB" -s "$s" shell cmd package set-home-activity "$OURS" 2>&1)"
+    case "$out" in *Success*) ;; *) echo "set-home-activity failed ($out); stock launcher left enabled" >&2; exit 1 ;; esac
+    now="$("$ADB" -s "$s" shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME | tail -1 | tr -d '\r')"
+    [ "$now" = "$OURS" ] || { echo "Home resolves to '$now', not $OURS; stock launcher left enabled" >&2; exit 1; }
+    out="$("$ADB" -s "$s" shell pm disable-user --user 0 "$STOCK_PKG" 2>&1)"
+    case "$out" in *"new state: disabled-user"*) ;; *) echo "pm disable-user failed ($out); run home-restore" >&2; home_status; exit 1 ;; esac
+    home_status ;;
   home-restore)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    "$ADB" -s "$s" shell pm enable com.google.android.apps.tv.launcherx
-    "$ADB" -s "$s" shell cmd package set-home-activity com.google.android.apps.tv.launcherx/.home.HomeActivity
-    "$0" home-status ;;
+    out="$("$ADB" -s "$s" shell pm enable "$STOCK_PKG" 2>&1)"
+    case "$out" in *"new state: enabled"*|*"already enabled"*) ;; *) echo "pm enable failed ($out); not changing home activity" >&2; exit 1 ;; esac
+    out="$("$ADB" -s "$s" shell cmd package set-home-activity "$STOCK" 2>&1)"
+    case "$out" in *Success*) ;; *) echo "set-home-activity failed ($out)" >&2; home_status; exit 1 ;; esac
+    home_status ;;
   idle-set)
     m="${1:-}"
-    case "$m" in ''|*[!0-9]*) echo "usage: tv.sh idle-set <minutes>  (integer >= 1)" >&2; exit 2 ;; esac
-    [ "$m" -ge 1 ] || { echo "usage: tv.sh idle-set <minutes>  (integer >= 1)" >&2; exit 2; }
+    case "$m" in ''|*[!0-9]*) echo "usage: tv.sh idle-set <minutes>  (integer 1..1440)" >&2; exit 2 ;; esac
+    m=$((10#$m))
+    { [ "$m" -ge 1 ] && [ "$m" -le 1440 ]; } || { echo "usage: tv.sh idle-set <minutes>  (integer 1..1440)" >&2; exit 2; }
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
     "$ADB" -s "$s" shell settings put system screen_off_timeout $((m*60000))
