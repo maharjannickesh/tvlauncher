@@ -39,7 +39,7 @@ The Chromecast with Google TV has no picker for third-party screensavers, so sel
 
 ## Settings
 
-Name, Home city, Home time zone, three world clocks (city and time zone each), Weather city, Units (F/C), 24-hour clock, Accent colour (4 options), Screensaver dim, Show seconds (screensaver), and Background... (source: built-in scenes Dusk/Night/Forest or solid colour; Google Photos is shown as "Coming soon"; photo change interval and shuffle for the future photo source).
+Name, Home city, Home time zone, three world clocks (city and time zone each), Weather city, Units (F/C), 24-hour clock, Accent colour (4 options), Screensaver dim, Show seconds (screensaver), Background... (source: built-in scenes Dusk/Night/Forest or solid colour; Google Photos is shown as "Coming soon"; photo change interval and shuffle for the future photo source), and Home button... (On/Off; opens the TV Accessibility page, the state refreshes when Settings is reopened).
 
 ## Performance (debug build, Chromecast with Google TV, armv7)
 
