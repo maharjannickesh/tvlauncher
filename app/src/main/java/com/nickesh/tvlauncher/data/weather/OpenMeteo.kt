@@ -28,11 +28,28 @@ data class Forecast(val current: Current, val daily: Daily) {
 }
 
 @Serializable
-private data class GeoResponse(val results: List<GeoResult>? = null)
+data class GeoMatch(
+    val name: String,
+    val admin1: String? = null,
+    val country: String? = null,
+    val latitude: Double,
+    val longitude: Double,
+    val timezone: String,
+) {
+    val label: String get() = listOfNotNull(name, admin1, country).joinToString(", ")
+}
+
+@Serializable
+internal data class GeoResponse(val results: List<GeoMatch>? = null)
 
 interface WeatherApi {
+    /** Up to 8 matches, empty when nothing matches; throws on transport failure. */
+    suspend fun search(query: String): List<GeoMatch>
+
     /** Null when nothing matches; throws on transport failure. */
-    suspend fun geocode(city: String): GeoResult?
+    suspend fun geocode(city: String): GeoResult? =
+        search(city).firstOrNull()?.let { GeoResult(it.name, it.latitude, it.longitude, it.timezone) }
+
     suspend fun forecast(lat: Double, lon: Double, unit: TempUnit, zone: String): Forecast
 }
 
@@ -46,10 +63,10 @@ class OpenMeteoClient(private val http: OkHttpClient, private val json: Json) : 
         }
     }
 
-    override suspend fun geocode(city: String): GeoResult? =
+    override suspend fun search(query: String): List<GeoMatch> =
         json.decodeFromString<GeoResponse>(
-            get("https://geocoding-api.open-meteo.com/v1/search?name=${enc(city)}&count=1"),
-        ).results?.firstOrNull()
+            get("https://geocoding-api.open-meteo.com/v1/search?name=${enc(query)}&count=8&language=en"),
+        ).results.orEmpty()
 
     override suspend fun forecast(lat: Double, lon: Double, unit: TempUnit, zone: String): Forecast {
         val u = if (unit == TempUnit.F) "fahrenheit" else "celsius"

@@ -12,10 +12,10 @@ import org.junit.Test
 private class FakeApi(var fail: Boolean = false) : WeatherApi {
     var geocodeCalls = 0
     var forecastCalls = 0
-    override suspend fun geocode(city: String): GeoResult? {
+    override suspend fun search(query: String): List<GeoMatch> {
         geocodeCalls++
         if (fail) throw IOException("offline")
-        return GeoResult(city, 39.96, -82.99, "America/New_York")
+        return listOf(GeoMatch(query, null, null, 39.96, -82.99, "America/New_York"))
     }
     override suspend fun forecast(lat: Double, lon: Double, unit: TempUnit, zone: String): Forecast {
         forecastCalls++
