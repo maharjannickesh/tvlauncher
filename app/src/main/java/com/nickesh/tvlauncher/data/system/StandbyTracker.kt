@@ -38,6 +38,8 @@ class StandbyTracker(private val clock: () -> Long = SystemClock::elapsedRealtim
 
     /** Returns whether the most recent off→on cycle qualifies for a replay, then clears it. */
     fun takeReplay(thresholdMs: Long = WelcomeReplay.THRESHOLD_MS): Boolean {
+        // Still asleep (off recorded, no on yet): keep the pending off for the real wake.
+        if (screenOffAt != null && screenOnAt == null) return false
         val replay = WelcomeReplay.shouldReplay(screenOffAt, screenOnAt, thresholdMs)
         screenOffAt = null
         screenOnAt = null

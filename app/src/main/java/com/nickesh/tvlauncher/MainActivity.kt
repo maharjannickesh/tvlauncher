@@ -2,8 +2,9 @@ package com.nickesh.tvlauncher
 
 import android.content.Intent
 import android.os.Bundle
-import android.util.Log
+import android.os.PowerManager
 import android.os.SystemClock
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -55,6 +56,8 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle(initialValue = Settings())
             val accent = Color(settings.accentArgb)
             // Shown on every cold start; survives rotation/recreation only.
+            // Bumped on every replay so the Welcome gate re-runs even if Compose never saw the state change.
+            var welcomeRun by rememberSaveable { mutableStateOf(0) }
             var welcomeDone by rememberSaveable { mutableStateOf(false) }
             var screen by rememberSaveable(stateSaver = ScreenSaver) {
                 mutableStateOf<Screen>(if (welcomeDone) Screen.Home else Screen.Welcome)
@@ -69,14 +72,16 @@ class MainActivity : ComponentActivity() {
                 val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
                     if (e == androidx.lifecycle.Lifecycle.Event.ON_START) {
                         homeViewModel.refreshNow()
-                        val pm = getSystemService(android.os.PowerManager::class.java)
-                        if (pm.isInteractive) container.standby.onInteractiveStart()
-                        val replay = container.standby.takeReplay(BuildConfig.WELCOME_REPLAY_MS)
-                        Log.i("Home", "onStart replay=$replay")
-                        if (replay) {
-                            Log.i("Home", "welcome replay after standby")
-                            welcomeDone = false
-                            screen = Screen.Welcome
+                        val pm = getSystemService(PowerManager::class.java)
+                        // A start while still asleep must not consume the pending standby.
+                        if (pm.isInteractive) {
+                            container.standby.onInteractiveStart()
+                            if (container.standby.takeReplay(BuildConfig.WELCOME_REPLAY_MS)) {
+                                Log.i("Home", "welcome replay after standby")
+                                welcomeRun++
+                                welcomeDone = false
+                                screen = Screen.Welcome
+                            }
                         }
                     }
                 }
@@ -95,7 +100,7 @@ class MainActivity : ComponentActivity() {
                         Screen.Welcome -> {
                             // Readiness gate: apps loaded and the saved settings emitted (so the saved name
                             // shows), capped at 4 s, never shorter than 1.2 s.
-                            LaunchedEffect(Unit) {
+                            LaunchedEffect(welcomeRun) {
                                 val start = SystemClock.elapsedRealtime()
                                 withTimeoutOrNull(4000) {
                                     container.apps.ready.first { it }

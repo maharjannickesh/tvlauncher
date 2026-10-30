@@ -41,4 +41,14 @@ class StandbyTrackerTest {
     }
 
     @Test fun interactiveStartWithoutOff_noReplay() { tracker.onInteractiveStart(); assertFalse(tracker.takeReplay()) }
+
+    @Test fun stillAsleepTake_keepsPendingOff_thenWakeReplays() {
+        tracker.onScreenOff(); now += 5 * min; assertFalse(tracker.takeReplay())
+        now += 6 * min; tracker.onScreenOn(); assertTrue(tracker.takeReplay())
+    }
+
+    @Test fun interactiveStartAfterRealScreenOn_doesNotOverwrite() {
+        tracker.onScreenOff(); now += 11 * min; tracker.onScreenOn(); now += 50 * min; tracker.onInteractiveStart()
+        assertTrue(tracker.takeReplay())
+    }
 }
