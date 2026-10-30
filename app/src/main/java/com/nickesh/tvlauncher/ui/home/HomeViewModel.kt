@@ -101,7 +101,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     init {
         viewModelScope.launch(Dispatchers.IO) {
             container.settings.settings
-                .map { Triple(it.weatherCity, it.unit, it.homeZone) }
+                .map { Triple(it.homeCity, it.unit, it.homeZone) }
                 .distinctUntilChanged()
                 .collectLatest { (city, unit, zone) ->
                     while (true) {
@@ -148,7 +148,7 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     private fun build(settings: Settings, allApps: List<AppTile>, weather: WeatherUi?, now: Instant): HomeUiState {
         val home = now.atZone(ZoneId.of(settings.homeZone))
         return HomeUiState(
-            greeting = ClockMath.greeting(home.hour),
+            greeting = ClockMath.greeting(home.hour, settings.name),
             homeCity = settings.homeCity,
             hero = ClockMath.timeText(home, settings.use24h),
             dateLine = ClockMath.dateLine(home),

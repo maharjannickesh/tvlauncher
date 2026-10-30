@@ -1,6 +1,9 @@
 package com.nickesh.tvlauncher.data.settings
 
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.mutablePreferencesOf
+import androidx.datastore.preferences.core.stringPreferencesKey
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,5 +40,18 @@ class SettingsMappingTest {
     fun zoneOptions_has19_andContainsKathmandu() {
         assertEquals(19, ZONE_OPTIONS.size)
         assertTrue("Asia/Kathmandu" in ZONE_OPTIONS)
+    }
+
+    @Test fun clockCoordinates_roundTrip() {
+        val s = Settings(clocks = listOf(WorldClock("Lisbon", "Europe/Lisbon", 38.72, -9.14), WorldClock("London", "Europe/London"), WorldClock("Tokyo", "Asia/Tokyo")), homeLat = 39.96, homeLon = -82.99)
+        val back = s.toPreferences().toSettings()
+        assertEquals(38.72, back.clocks[0].lat!!, 1e-9); assertEquals(-9.14, back.clocks[0].lon!!, 1e-9); assertNull(back.clocks[1].lat)
+        assertEquals(39.96, back.homeLat!!, 1e-9)
+    }
+
+    @Test fun legacyWeatherCity_isReadNeverWritten() {
+        val prefs = mutablePreferencesOf(stringPreferencesKey("weather_city") to "Columbus, OH")
+        assertEquals("Columbus, OH", prefs.toSettings().legacyWeatherCity)
+        assertNull(Settings(legacyWeatherCity = "X").toPreferences()[stringPreferencesKey("weather_city")])
     }
 }

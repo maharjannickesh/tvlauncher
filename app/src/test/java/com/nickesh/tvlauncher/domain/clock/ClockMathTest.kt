@@ -54,14 +54,20 @@ class ClockMathTest {
     }
 
     @Test fun greeting_boundaries() {
-        assertEquals("Good night", ClockMath.greeting(4))
-        assertEquals("Good morning", ClockMath.greeting(5))
-        assertEquals("Good morning", ClockMath.greeting(11))
-        assertEquals("Good afternoon", ClockMath.greeting(12))
-        assertEquals("Good afternoon", ClockMath.greeting(16))
-        assertEquals("Good evening", ClockMath.greeting(17))
-        assertEquals("Good evening", ClockMath.greeting(23))
+        assertEquals("Good Night", ClockMath.greeting(4, ""))
+        assertEquals("Good Morning", ClockMath.greeting(5, ""))
+        assertEquals("Good Morning", ClockMath.greeting(11, ""))
+        assertEquals("Good Afternoon", ClockMath.greeting(12, ""))
+        assertEquals("Good Afternoon", ClockMath.greeting(16, ""))
+        assertEquals("Good Evening", ClockMath.greeting(17, ""))
+        assertEquals("Good Evening", ClockMath.greeting(23, ""))
     }
+
+    @Test fun greeting_titleCaseWithName() {
+        assertEquals("Good Afternoon, Nickesh", ClockMath.greeting(14, "Nickesh")); assertEquals("Good Morning, Nickesh", ClockMath.greeting(9, "Nickesh"))
+        assertEquals("Good Evening, Nickesh", ClockMath.greeting(20, "Nickesh")); assertEquals("Good Night, Nickesh", ClockMath.greeting(3, "Nickesh"))
+    }
+    @Test fun greeting_blankName_noComma() { assertEquals("Good Afternoon", ClockMath.greeting(14, "  ")) }
 
     @Test fun dateLine_format() {
         assertEquals("Thursday, October 29", ClockMath.dateLine(homeNy))

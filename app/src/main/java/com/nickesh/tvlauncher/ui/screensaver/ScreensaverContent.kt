@@ -81,7 +81,7 @@ private fun PillBar(settings: Settings, weather: WeatherUi?, clocks: List<ClockS
         Row(horizontalArrangement = Arrangement.spacedBy(14.dpx()), verticalAlignment = Alignment.CenterVertically) {
             Icon((weather?.kind ?: WeatherKind.PARTLY).icon(), null, Modifier.size(40.dpx()), tint = Color.White)
             Text(weather?.now ?: "--°", color = Color.White, fontFamily = Outfit, fontWeight = FontWeight.W400, fontSize = 30.spx())
-            Text(weather?.city ?: settings.weatherCity, color = Color.White.copy(alpha = 0.75f), fontFamily = Outfit, fontSize = 24.spx())
+            Text(weather?.city ?: settings.homeCity, color = Color.White.copy(alpha = 0.75f), fontFamily = Outfit, fontSize = 24.spx())
         }
         clocks.forEach { c ->
             Row(horizontalArrangement = Arrangement.spacedBy(40.dpx()), verticalAlignment = Alignment.CenterVertically) {

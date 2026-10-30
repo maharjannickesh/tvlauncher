@@ -41,7 +41,7 @@ fun HomeScreen(
                     verticalAlignment = Alignment.Bottom,
                 ) {
                     HeroClock(state.hero, state.dateLine)
-                    WeatherCard(state.weather, state.settings.weatherCity, state.accent, onOpenSettings)
+                    WeatherCard(state.weather, state.settings.homeCity, state.accent, onOpenSettings)
                 }
                 Row(
                     Modifier.fillMaxWidth().padding(top = 40.dpx()),

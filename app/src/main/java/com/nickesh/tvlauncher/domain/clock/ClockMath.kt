@@ -35,11 +35,15 @@ object ClockMath {
 
     fun dateLine(t: ZonedDateTime): String = DATE_FORMAT.format(t)
 
-    fun greeting(hour: Int): String = when {
-        hour < 5 -> "Good night"
-        hour < 12 -> "Good morning"
-        hour < 17 -> "Good afternoon"
-        else -> "Good evening"
+    fun greeting(hour: Int, name: String): String {
+        val base = when {
+            hour < 5 -> "Good Night"
+            hour < 12 -> "Good Morning"
+            hour < 17 -> "Good Afternoon"
+            else -> "Good Evening"
+        }
+        val n = name.trim()
+        return if (n.isEmpty()) base else "$base, $n"
     }
 
     fun isDay(hour: Int): Boolean = hour in 6..17

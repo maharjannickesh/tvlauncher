@@ -2,6 +2,7 @@ package com.nickesh.tvlauncher.data.settings
 
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
@@ -12,7 +13,7 @@ enum class BackgroundSource { PHOTOS, SCENES, COLOR } // PHOTOS exists but is di
 enum class Scene { DUSK, NIGHT, FOREST }
 enum class ChangeInterval(val minutes: Int?) { M5(5), M15(15), H1(60), DAILY(1440), NEVER(null) }
 
-data class WorldClock(val city: String, val zoneId: String)
+data class WorldClock(val city: String, val zoneId: String, val lat: Double? = null, val lon: Double? = null)
 
 val DEFAULT_FAVOURITES = listOf(
     "com.google.android.youtube.tv",
@@ -38,12 +39,15 @@ data class Settings(
     val name: String = "Nickesh",
     val homeCity: String = "Columbus",
     val homeZone: String = "America/New_York",
+    val homeLat: Double? = null,
+    val homeLon: Double? = null,
     val clocks: List<WorldClock> = listOf(
         WorldClock("Kathmandu", "Asia/Kathmandu"),
         WorldClock("London", "Europe/London"),
         WorldClock("Tokyo", "Asia/Tokyo"),
     ),
-    val weatherCity: String = "Columbus, OH",
+    /** Read from the v1 `weather_city` key, never written; lets old installs keep their home weather. */
+    val legacyWeatherCity: String? = null,
     val unit: TempUnit = TempUnit.F,
     val use24h: Boolean = false,
     val accentArgb: Long = 0xFF8FB8FF,
@@ -66,7 +70,11 @@ internal object SettingsKeys {
     val homeZone = stringPreferencesKey("home_zone")
     fun clockCity(i: Int) = stringPreferencesKey("clock${i}_city")
     fun clockZone(i: Int) = stringPreferencesKey("clock${i}_zone")
-    val weatherCity = stringPreferencesKey("weather_city")
+    val legacyWeatherCity = stringPreferencesKey("weather_city")
+    val homeLat = doublePreferencesKey("home_lat")
+    val homeLon = doublePreferencesKey("home_lon")
+    fun clockLat(i: Int) = doublePreferencesKey("clock${i}_lat")
+    fun clockLon(i: Int) = doublePreferencesKey("clock${i}_lon")
     val unit = stringPreferencesKey("unit")
     val use24h = booleanPreferencesKey("use_24h")
     val accentArgb = longPreferencesKey("accent_argb")
@@ -85,11 +93,14 @@ fun Settings.toPreferences(): Preferences {
     prefs[SettingsKeys.name] = name
     prefs[SettingsKeys.homeCity] = homeCity
     prefs[SettingsKeys.homeZone] = homeZone
+    homeLat?.let { prefs[SettingsKeys.homeLat] = it }
+    homeLon?.let { prefs[SettingsKeys.homeLon] = it }
     clocks.take(CLOCK_SLOTS).forEachIndexed { i, clock ->
         prefs[SettingsKeys.clockCity(i)] = clock.city
         prefs[SettingsKeys.clockZone(i)] = clock.zoneId
+        clock.lat?.let { prefs[SettingsKeys.clockLat(i)] = it }
+        clock.lon?.let { prefs[SettingsKeys.clockLon(i)] = it }
     }
-    prefs[SettingsKeys.weatherCity] = weatherCity
     prefs[SettingsKeys.unit] = unit.name
     prefs[SettingsKeys.use24h] = use24h
     prefs[SettingsKeys.accentArgb] = accentArgb
@@ -113,14 +124,18 @@ fun Preferences.toSettings(): Settings {
         WorldClock(
             city = this[SettingsKeys.clockCity(i)] ?: fallback.city,
             zoneId = this[SettingsKeys.clockZone(i)] ?: fallback.zoneId,
+            lat = this[SettingsKeys.clockLat(i)],
+            lon = this[SettingsKeys.clockLon(i)],
         )
     }
     return Settings(
         name = this[SettingsKeys.name] ?: d.name,
         homeCity = this[SettingsKeys.homeCity] ?: d.homeCity,
         homeZone = this[SettingsKeys.homeZone] ?: d.homeZone,
+        homeLat = this[SettingsKeys.homeLat],
+        homeLon = this[SettingsKeys.homeLon],
         clocks = clocks,
-        weatherCity = this[SettingsKeys.weatherCity] ?: d.weatherCity,
+        legacyWeatherCity = this[SettingsKeys.legacyWeatherCity],
         unit = this[SettingsKeys.unit].toEnumOr(d.unit),
         use24h = this[SettingsKeys.use24h] ?: d.use24h,
         accentArgb = this[SettingsKeys.accentArgb] ?: d.accentArgb,

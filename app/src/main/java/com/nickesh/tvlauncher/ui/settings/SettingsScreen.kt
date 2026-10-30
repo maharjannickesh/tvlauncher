@@ -83,7 +83,6 @@ fun SettingsScreen(
                     TextSettingRow("Clock ${i + 1} city", clock.city) { v -> editClock { it.copy(city = v) } }
                     ZoneRow("Clock ${i + 1} time zone", clock.zoneId) { d -> editClock { it.copy(zoneId = cycleZone(it.zoneId, d)) } }
                 }
-                TextSettingRow("Weather city", settings.weatherCity) { v -> onUpdate { it.copy(weatherCity = v) } }
                 SettingRow("Units", onClick = {
                     onUpdate { it.copy(unit = if (it.unit == TempUnit.F) TempUnit.C else TempUnit.F) }
                 }) { ValueText(if (settings.unit == TempUnit.F) "Fahrenheit (°F)" else "Celsius (°C)") }
