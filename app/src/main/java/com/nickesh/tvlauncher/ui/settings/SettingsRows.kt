@@ -34,6 +34,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.tv.material3.Border
@@ -126,7 +127,7 @@ fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, 
                 value = draft,
                 onValueChange = { draft = it },
                 singleLine = true,
-                textStyle = TextStyle(color = Color.White, fontFamily = Outfit, fontSize = 24.spx()),
+                textStyle = TextStyle(color = Color.White, fontFamily = Outfit, fontSize = 24.spx(), textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Color.White),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = {
