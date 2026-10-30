@@ -123,3 +123,7 @@ If step 3 or 5 shows a black screen, a crash, or a dead Home key, run `home-rest
 - Lint 0 errors; 52 + new tests green.
 - Device: the six-step order in §6 with screenshots `shots/takeover-*.png`; logcat excerpt of one replay decision.
 - README and `docs/superpowers/reports/` updated; branch `v1` (user has not asked to merge to `main`).
+
+## Amendment 2026-10-30 (after the first switch-over attempt)
+
+On this Chromecast the HOME candidates are ranked by intent-filter priority: `launcherx/.home.HomeActivity` 2, `com.google.android.tungsten.setupwraith/.RecoveryActivity` 1, ours 0 (non-privileged apps are capped at 0), `com.android.tv.settings/.system.FallbackHome` −1000. Android honours `set-home-activity` only when the top two candidates tie, so disabling `launcherx` alone would hand Home to the setup wizard's RecoveryActivity. Nickesh ruled: `home-take` also disables **that one component** (`pm disable-user --user 0 com.google.android.tungsten.setupwraith/.RecoveryActivity`, never the whole package), and `home-restore` re-enables both. The anti-goal's "never disable anything other than launcherx" is widened to exactly these two. The verify-before-disable gate becomes verify-after-disable: if HOME does not resolve to ours once both are disabled, `home-take` runs the restore itself and exits non-zero. Known loss, accepted: the long-press-Home quick-settings panel is hosted by `launcherx` and disappears while taken over; TV Settings stays reachable from the top bar.
