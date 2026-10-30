@@ -27,6 +27,16 @@ serial() {
 
 SVC=com.nickesh.tvlauncher/com.nickesh.tvlauncher.HomeKeyService
 
+# Echoes the colon-separated list $1 without our component (short or full form), no empty entries.
+svc_list_without() {
+  local out="" e
+  local IFS=:
+  for e in $1; do
+    case "$e" in ""|"$SVC"|com.nickesh.tvlauncher/.HomeKeyService) ;; *) out="${out:+$out:}$e" ;; esac
+  done
+  printf %s "$out"
+}
+
 cmd="${1:-}"; shift || true
 case "$cmd" in
   port) port ;;
@@ -63,25 +73,38 @@ case "$cmd" in
   homekey-on)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    "$ADB" -s "$s" shell settings put secure enabled_accessibility_services "$SVC"
+    cur="$("$ADB" -s "$s" shell settings get secure enabled_accessibility_services | tr -d '\r')"
+    [ "$cur" = "null" ] && cur=""
+    list="$(svc_list_without "$cur")"
+    list="${list:+$list:}$SVC"
+    "$ADB" -s "$s" shell settings put secure enabled_accessibility_services "$list"
     "$ADB" -s "$s" shell settings put secure accessibility_enabled 1 ;;
   homekey-off)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    "$ADB" -s "$s" shell settings delete secure enabled_accessibility_services
-    "$ADB" -s "$s" shell settings delete secure accessibility_enabled
-    "$ADB" -s "$s" shell settings put secure accessibility_enabled 0 ;;
+    cur="$("$ADB" -s "$s" shell settings get secure enabled_accessibility_services | tr -d '\r')"
+    [ "$cur" = "null" ] && cur=""
+    list="$(svc_list_without "$cur")"
+    if [ -n "$list" ]; then
+      "$ADB" -s "$s" shell settings put secure enabled_accessibility_services "$list"
+    else
+      "$ADB" -s "$s" shell settings delete secure enabled_accessibility_services
+      "$ADB" -s "$s" shell settings put secure accessibility_enabled 0
+    fi ;;
   homekey-status)
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
-    echo "enabled_accessibility_services=$("$ADB" -s "$s" shell settings get secure enabled_accessibility_services | tr -d '\r')"
-    echo "accessibility_enabled=$("$ADB" -s "$s" shell settings get secure accessibility_enabled | tr -d '\r')"
-    if "$ADB" -s "$s" shell dumpsys accessibility | grep -q HomeKeyService; then echo "bound: yes"; else echo "bound: no"; fi ;;
+    if v="$("$ADB" -s "$s" shell settings get secure enabled_accessibility_services)"; then v="$(printf %s "$v" | tr -d '\r')"; else v=unknown; fi
+    echo "enabled_accessibility_services=$v"
+    if v="$("$ADB" -s "$s" shell settings get secure accessibility_enabled)"; then v="$(printf %s "$v" | tr -d '\r')"; else v=unknown; fi
+    echo "accessibility_enabled=$v"
+    # The label (not the class name) is what the "Bound services:" line prints.
+    if "$ADB" -s "$s" shell dumpsys accessibility | grep '^ *Bound services:' | grep -q 'TV Launcher Home key'; then echo "bound: yes"; else echo "bound: no"; fi ;;
   remote)
     case "${1:-}" in
       short) hold=80 ;;
       long) hold=1500 ;;
-      *) echo "usage: tv.sh remote short|long" >&2; exit 2 ;;
+      *) echo "usage: tv.sh remote <short|long>" >&2; exit 2 ;;
     esac
     s="$(serial)"
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
@@ -96,5 +119,5 @@ case "$cmd" in
     "$ADB" -s "$s" shell settings put system screen_off_timeout $((m*60000))
     "$ADB" -s "$s" shell settings get system screen_off_timeout ;;
   *)
-    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop|homekey-on|homekey-off|homekey-status|remote short|long|idle-set <minutes>}" >&2; exit 2 ;;
+    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop|homekey-on|homekey-off|homekey-status|remote <short|long>|idle-set <minutes>}" >&2; exit 2 ;;
 esac

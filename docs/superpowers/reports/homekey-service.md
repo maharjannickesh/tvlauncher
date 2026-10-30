@@ -8,7 +8,7 @@ Device: Chromecast with Google TV, wireless adb. Shots are in `shots/` (git-igno
 - Welcome mash and 10-minute standby replay still behave: `homekey-welcome-mash`, `homekey-replay`.
 - Settings row "Home button... On/Off": `homekey-settings-on`, `homekey-settings-off`; Accessibility page: `homekey-accessibility-page`.
 - Virtual remote control check: `homekey-remote-control`.
-- Logcat excerpts: `.superpowers/sdd/2026-10-30-homekey-service/task-4-report.md`, `task-5-report.md`.
+- Key log lines: short from YouTube -> `short → home` then `Home: onNewIntent`; long -> `long → dashboard true`; after 10 min standby (replay build) -> `Home: welcome replay after standby`.
 - Physical-remote gate (before building): `homekey-gate.md`.
 
 ## Reboot (Task 6)
