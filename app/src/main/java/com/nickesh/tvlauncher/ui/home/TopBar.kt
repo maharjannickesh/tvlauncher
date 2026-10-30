@@ -12,6 +12,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +41,7 @@ fun TopBar(
     onAction: (SystemAction) -> Unit,
     showInputs: Boolean = true,
     modifier: Modifier = Modifier,
+    assistRequester: FocusRequester = remember { FocusRequester() },
 ) {
     Row(
         modifier.fillMaxWidth().height(56.dpx()),
@@ -57,7 +62,7 @@ fun TopBar(
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(16.dpx()), verticalAlignment = Alignment.CenterVertically) {
-            AssistPill(accent) { onAction(SystemAction.ASSIST) }
+            AssistPill(accent, assistRequester) { onAction(SystemAction.ASSIST) }
             RoundButton(Icons.Search, "Search", { onAction(SystemAction.SEARCH) })
             if (showInputs) RoundButton(Icons.Inputs, "Input source", { onAction(SystemAction.INPUTS) })
             RoundButton(Icons.Settings, "Settings", onOpenSettings)
@@ -67,11 +72,12 @@ fun TopBar(
 }
 
 @Composable
-private fun AssistPill(accent: Color, onClick: () -> Unit) {
+private fun AssistPill(accent: Color, requester: FocusRequester, onClick: () -> Unit) {
     val shape = RoundedCornerShape(28.dpx())
     Surface(
         onClick = onClick,
-        modifier = Modifier.height(56.dpx()),
+        modifier = Modifier.height(56.dpx()).focusRequester(requester)
+            .focusProperties { left = FocusRequester.Cancel }, // nothing to the left in the top bar: stay put, don't jump to the clock cards
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x2EFFFFFF),

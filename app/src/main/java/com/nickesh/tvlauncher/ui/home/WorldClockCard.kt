@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -38,11 +40,11 @@ import com.nickesh.tvlauncher.ui.theme.dpx
 import com.nickesh.tvlauncher.ui.theme.spx
 
 @Composable
-fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier, up: FocusRequester = FocusRequester.Default) {
     val shape = RoundedCornerShape(28.dpx())
     Surface(
         onClick = onClick,
-        modifier = modifier.height(152.dpx()),
+        modifier = modifier.height(152.dpx()).focusProperties { this.up = up },
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x1AFFFFFF),
