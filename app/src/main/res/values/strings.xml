@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">TV Launcher</string>
+    <string name="homekey_service_label">TV Launcher Home key</string>
+    <string name="homekey_service_description">Makes the remote\'s Home button open TV Launcher. Long press still opens Google TV\'s quick settings.</string>
 </resources>
