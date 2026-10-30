@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -167,7 +168,7 @@ fun BackgroundScreen(
                                 unselectedRing = Color(0x33FFFFFF), ringWidth = 2,
                                 fill = if (on) Color.White else Color.Transparent,
                             ) {
-                                Box(Modifier.fillMaxSize().padding(horizontal = 24.dpx()), contentAlignment = Alignment.Center) {
+                                Box(Modifier.fillMaxHeight().padding(horizontal = 24.dpx()), contentAlignment = Alignment.Center) {
                                     Text(
                                         label, color = if (on) Ink else Color.White, fontFamily = Outfit,
                                         fontWeight = FontWeight.W500, fontSize = 22.spx(), maxLines = 1,
