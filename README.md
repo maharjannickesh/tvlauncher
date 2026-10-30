@@ -1,6 +1,6 @@
 # TV Launcher
 
-A personal home screen for a Chromecast with Google TV (Android 14, API 34, armeabi-v7a, 1920x1080 render surface). It replaces the busy stock Google TV home with a calm, glassy dashboard. It runs as a normal app, and can optionally become the Home button's target (see [Home button](#home-button)); the stock launcher stays installed and is only disabled by an explicit `tools/tv.sh home-take`.
+A personal home screen for a Chromecast with Google TV (Android 14, API 34, armeabi-v7a, 1920x1080 render surface). It replaces the busy stock Google TV home with a calm, glassy dashboard. It runs as a normal app, and an optional accessibility service makes the remote's Home button open it (see [Home button](#home-button)); nothing on the TV is disabled.
 
 Built with Kotlin and Jetpack Compose for TV (`androidx.tv:tv-material`), DataStore, OkHttp (Open-Meteo weather) and kotlinx-serialization. Package `com.nickesh.tvlauncher`. The design source is in `tv-launcher-design/` and the v1 design doc is `docs/superpowers/specs/2026-10-29-tv-launcher-v1-design.md`.
 
@@ -24,7 +24,7 @@ System Java is 27 on this Mac and Gradle needs 21:
 - Tests: `./gradlew :app:testDebugUnitTest`; lint: `./gradlew lintDebug`
 - Connect, install and launch on the TV (wireless adb, 10.0.0.21): `tools/tv.sh connect && tools/tv.sh install`
 - Screenshot to `shots/<name>.png` (git-ignored): `tools/tv.sh shot <name>`
-- Home-button switch-over and screen-off timeout: `tools/tv.sh home-status | home-take | home-restore | idle-set <minutes>` (see below)
+- Home key service: `tools/tv.sh homekey-on | homekey-off | homekey-status`; virtual remote press (`input keyevent` never reaches accessibility services, so this uses uinput): `tools/tv.sh remote short|long`; screen-off timeout: `tools/tv.sh idle-set <minutes>` (see below)
 - If a second adb device is attached, pass `-s <serial>` to raw adb; `tools/tv.sh` picks the 10.0.0.21 serial itself.
 
 ## Screensaver
@@ -51,24 +51,25 @@ Measured 2026-10-29 with `am start -W` after a force-stop:
 
 ## Home button
 
-The app declares the HOME intent filter and replays the Welcome splash after at least 10 minutes of standby (matches the TV's "Screen saver -> When to start"; see `docs/superpowers/specs/2026-10-30-home-takeover-design.md`). Switching the Home key over is done from the Mac over adb:
+An accessibility service, **TV Launcher Home key** (`HomeKeyService`), makes the remote's Home button open TV Launcher. Nothing on the TV is disabled: the stock Google TV launcher stays installed and enabled.
 
-    tools/tv.sh home-status      # prints the current HOME component, `launcherx disabled: 0|1` and `recovery disabled: 0|1`
-    tools/tv.sh home-take        # set-home-activity to TV Launcher, disable setupwraith's RecoveryActivity (component only) and the stock launcher (launcherx), then verify
-    tools/tv.sh home-restore     # re-enable launcherx and RecoveryActivity, set-home-activity back to launcherx/.home.HomeActivity, verify, then home-status
-    tools/tv.sh idle-set <min>   # sets system screen_off_timeout to <min> minutes (integer >= 1) and prints it back (600000 = 10 min)
+Enable it in TV Settings -> System -> Accessibility -> TV Launcher Home key (the Settings row "Home button... On/Off" opens that page), or from the Mac:
 
-Why two disables: Android ranks HOME candidates by intent-filter priority before it looks at the preferred (set-home-activity) choice. On this Chromecast launcherx is priority 2, the setup wizard's `com.google.android.tungsten.setupwraith/.RecoveryActivity` is 1, and TV Launcher is capped at 0, so both must be disabled for Home to reach us. Only that one setupwraith component is disabled, never the package. `home-take` verifies after disabling: if HOME does not then resolve to TV Launcher it runs the restore itself and exits 1. `recovery disabled` is read from `dumpsys package com.google.android.tungsten.setupwraith` (user 0's `disabledComponents`), because `pm list packages -d` only lists packages.
+    tools/tv.sh homekey-on       # adds the service to enabled_accessibility_services and turns accessibility on
+    tools/tv.sh homekey-off      # removes it
+    tools/tv.sh homekey-status   # on/off and whether the service is bound
+    tools/tv.sh remote short|long   # press Home on a uinput virtual remote (short, or held for 1+ s)
+    tools/tv.sh idle-set <min>   # sets system screen_off_timeout to <min> minutes (600000 = 10 min)
 
-Known, accepted loss while taken over: the long-press-Home quick-settings panel belongs to launcherx and goes away. TV Settings is still reachable from the top-bar Profile button (opens TV Settings' accounts/sync page, else TV Settings) and, via the app-details page, from Settings -> "Google TV Home...".
+- Short press: opens TV Launcher's Home with a plain intent (no Welcome splash; the Welcome replay after at least 10 minutes of standby still applies).
+- Long press (1 s or more): opens Google TV's quick-settings dashboard (`GLOBAL_ACTION_NOTIFICATIONS`). A long press is consumed even if that call returns false (it is logged as `HomeKey`), so the dashboard may occasionally not appear.
+- If launching our Home fails, the press is let through to Google TV.
+- Caveat: `am force-stop com.nickesh.tvlauncher` makes Android switch the service off (a plain reinstall does not). Re-run `tools/tv.sh homekey-on` or re-enable it in TV Settings.
+- Boot: see below, filled after the reboot check.
 
-`idle-set` only changes `system screen_off_timeout`; `secure sleep_timeout` is left alone.
+Why not disable the stock launcher? That route cannot work on this Chromecast: launcherx has HOME priority 2, setupwraith's `RecoveryActivity` has 1 and ours is capped at 0, the shell cannot disable that component, and it self-heals. Details: `docs/superpowers/reports/takeover-switchover.md`. The physical-remote check that selected the service approach is in `docs/superpowers/reports/homekey-gate.md`.
 
-**Stop rule:** if after `home-take` the screen goes black, the app crashes, or the Home key does nothing, run `tools/tv.sh home-restore` straight away.
-
-**Remote-only restore** (no Mac): in TV Launcher, Settings -> "Google TV Home..." opens the stock launcher's app-details page. If the page offers Enable, press it. Note: while the launcher is enabled the page shows no Enable/Disable control, so this path only helps when it is disabled and the page offers Enable. To remove TV Launcher entirely: Enable the stock launcher first, then uninstall.
-
-**Wireless debugging turns itself off on standby; keep Stay awake on** (Developer options) so adb stays reachable, otherwise `home-restore` may not be possible after the TV sleeps.
+**Wireless debugging turns itself off on standby; keep Stay awake on** (Developer options) so adb stays reachable.
 
 Debug builds accept `-PwelcomeReplayMs=<ms>` (for example `./gradlew installDebug -PwelcomeReplayMs=20000`) to shorten the Welcome-replay standby threshold for testing.
 

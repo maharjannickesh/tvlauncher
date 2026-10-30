@@ -1,5 +1,8 @@
 # TV Launcher v2.1 — Home-button takeover
 
+> **Superseded (2026-10-30):** sections 4-6 (disabling the stock launcher and setupwraith's RecoveryActivity over adb) are superseded by `2026-10-30-homekey-service-design.md`. On this Chromecast the adb-disable route cannot work (priority ladder 2/1/0, the shell cannot disable RecoveryActivity, it self-heals; see `docs/superpowers/reports/takeover-switchover.md`), so the Home key is now handled by an accessibility service and nothing is disabled.
+
+
 Date: 2026-10-30. Builds on `2026-10-29-tv-launcher-v1-design.md` (v1 is complete on branch `v1`, HEAD 5b1becd).
 
 ## Intent
