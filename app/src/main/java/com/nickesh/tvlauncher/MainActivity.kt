@@ -68,6 +68,7 @@ class MainActivity : ComponentActivity() {
             var screen by rememberSaveable(stateSaver = ScreenSaver) {
                 mutableStateOf<Screen>(if (welcomeDone) Screen.Home else Screen.Welcome)
             }
+            var cameFromBackground by rememberSaveable { mutableStateOf(false) }
             val homeViewModel = viewModel { HomeViewModel(container) }
             val showInputs = remember { container.systemIntents.isAvailable(SystemAction.INPUTS) }
             val launch = { tile: AppTile ->
@@ -109,8 +110,9 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(
                                 settings = cur,
                                 onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
-                                onOpenBackground = { screen = Screen.Background },
+                                onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
                                 onBack = { screen = Screen.Home },
+                                focusBackgroundRow = cameFromBackground,
                             )
                         }
                         Screen.Background -> {
@@ -127,7 +129,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 state = homeState,
                                 onOpenAllApps = { screen = Screen.AllApps },
-                                onOpenSettings = { screen = Screen.Settings },
+                                onOpenSettings = { cameFromBackground = false; screen = Screen.Settings },
                                 onLaunch = launch,
                                 showInputs = showInputs,
                                 onAction = { action ->

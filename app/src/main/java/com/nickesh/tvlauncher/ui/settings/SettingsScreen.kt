@@ -15,7 +15,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontWeight
@@ -49,8 +53,12 @@ fun SettingsScreen(
     onUpdate: ((Settings) -> Settings) -> Unit,
     onOpenBackground: () -> Unit,
     onBack: () -> Unit,
+    focusBackgroundRow: Boolean = false,
 ) {
     BackHandler { onBack() }
+    val firstRow = remember { FocusRequester() }
+    val bgRow = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { (if (focusBackgroundRow) bgRow else firstRow).requestFocus() } }
     Box(Modifier.fillMaxSize()) {
         Background(settings, dim = 0.72f, scrim = false)
         Column(Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 60.dpx(), bottom = 24.dpx())) {
@@ -63,15 +71,15 @@ fun SettingsScreen(
                     .padding(vertical = 8.dpx(), horizontal = 8.dpx()),
                 verticalArrangement = Arrangement.spacedBy(10.dpx()),
             ) {
-                TextSettingRow("Name", settings.name) { v -> onUpdate { it.copy(name = v) } }
+                TextSettingRow("Name", settings.name, Modifier.focusRequester(firstRow)) { v -> onUpdate { it.copy(name = v) } }
                 TextSettingRow("Home city", settings.homeCity) { v -> onUpdate { it.copy(homeCity = v) } }
-                ZoneRow("Home time zone", settings.homeZone) { z -> onUpdate { it.copy(homeZone = z) } }
+                ZoneRow("Home time zone", settings.homeZone) { d -> onUpdate { it.copy(homeZone = cycleZone(it.homeZone, d)) } }
                 settings.clocks.forEachIndexed { i, clock ->
-                    fun setClock(c: WorldClock) = onUpdate { s ->
-                        s.copy(clocks = s.clocks.mapIndexed { j, old -> if (j == i) c else old })
+                    fun editClock(f: (WorldClock) -> WorldClock) = onUpdate { s ->
+                        s.copy(clocks = s.clocks.mapIndexed { j, old -> if (j == i) f(old) else old })
                     }
-                    TextSettingRow("Clock ${i + 1} city", clock.city) { v -> setClock(clock.copy(city = v)) }
-                    ZoneRow("Clock ${i + 1} time zone", clock.zoneId) { z -> setClock(clock.copy(zoneId = z)) }
+                    TextSettingRow("Clock ${i + 1} city", clock.city) { v -> editClock { it.copy(city = v) } }
+                    ZoneRow("Clock ${i + 1} time zone", clock.zoneId) { d -> editClock { it.copy(zoneId = cycleZone(it.zoneId, d)) } }
                 }
                 TextSettingRow("Weather city", settings.weatherCity) { v -> onUpdate { it.copy(weatherCity = v) } }
                 SettingRow("Units", onClick = {
@@ -81,9 +89,10 @@ fun SettingsScreen(
                     SwitchVisual(settings.use24h)
                 }
                 SettingRow("Accent", onClick = {
-                    val i = AccentOptions.indexOfFirst { it.argb() == settings.accentArgb }
-                    val next = AccentOptions[(i + 1) % AccentOptions.size]
-                    onUpdate { it.copy(accentArgb = next.argb()) }
+                    onUpdate {
+                        val i = AccentOptions.indexOfFirst { c -> c.argb() == it.accentArgb }
+                        it.copy(accentArgb = AccentOptions[(i + 1) % AccentOptions.size].argb())
+                    }
                 }) {
                     Box(Modifier.size(36.dpx()).background(Color(settings.accentArgb), CircleShape))
                 }
@@ -102,11 +111,11 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ZoneRow(label: String, zone: String, onZone: (String) -> Unit) {
+private fun ZoneRow(label: String, zone: String, onCycle: (Int) -> Unit) {
     SettingRow(
         label,
-        onClick = { onZone(cycleZone(zone, 1)) },
-        onLeft = { onZone(cycleZone(zone, -1)) },
-        onRight = { onZone(cycleZone(zone, 1)) },
+        onClick = { onCycle(1) },
+        onLeft = { onCycle(-1) },
+        onRight = { onCycle(1) },
     ) { ValueText("‹  $zone  ›") }
 }

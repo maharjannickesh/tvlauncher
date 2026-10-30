@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.Key
@@ -109,13 +110,14 @@ fun SwitchVisual(on: Boolean) {
 }
 
 @Composable
-fun TextSettingRow(label: String, value: String, onCommit: (String) -> Unit) {
+fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, onCommit: (String) -> Unit) {
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(value) }
+    var hadFocus by remember { mutableStateOf(false) }
     val requester = remember { FocusRequester() }
     BackHandler(enabled = editing) { editing = false }
     LaunchedEffect(editing) { if (editing) runCatching { requester.requestFocus() } }
-    SettingRow(label, onClick = { draft = value; editing = true }) {
+    SettingRow(label, modifier, onClick = { draft = value; hadFocus = false; editing = true }) {
         if (editing) {
             BasicTextField(
                 value = draft,
@@ -129,7 +131,8 @@ fun TextSettingRow(label: String, value: String, onCommit: (String) -> Unit) {
                     if (t.isNotEmpty()) onCommit(t)
                     editing = false
                 }),
-                modifier = Modifier.size(width = 360.dpx(), height = 40.dpx()).focusRequester(requester),
+                modifier = Modifier.size(width = 360.dpx(), height = 40.dpx()).focusRequester(requester)
+                    .onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && editing) { editing = false; draft = value; hadFocus = false } },
             )
         } else {
             ValueText(value)

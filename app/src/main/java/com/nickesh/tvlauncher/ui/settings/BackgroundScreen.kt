@@ -14,11 +14,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.focusProperties
@@ -90,6 +97,7 @@ private val intervalDefs = listOf(
     ChangeInterval.DAILY to "Daily", ChangeInterval.NEVER to "Never",
 )
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BackgroundScreen(
     settings: Settings,
@@ -97,6 +105,8 @@ fun BackgroundScreen(
     onBack: () -> Unit,
 ) {
     BackHandler { onBack() }
+    val selectedRow = remember { FocusRequester() }
+    LaunchedEffect(Unit) { runCatching { selectedRow.requestFocus() } }
     Box(Modifier.fillMaxSize()) {
         Background(settings, dim = 0.72f, scrim = false)
         Column(Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 48.dpx(), bottom = 32.dpx())) {
@@ -120,7 +130,7 @@ fun BackgroundScreen(
                             selected = on,
                             shape = RoundedCornerShape(22.dpx()),
                             onClick = { onUpdate { it.copy(backgroundSource = src) } },
-                            modifier = Modifier.fillMaxWidth().height(96.dpx()).alpha(if (enabled) 1f else 0.5f)
+                            modifier = Modifier.fillMaxWidth().height(96.dpx()).then(if (on) Modifier.focusRequester(selectedRow) else Modifier).alpha(if (enabled) 1f else 0.5f)
                                 .focusProperties { canFocus = enabled },
                             unselectedRing = Color(0x1AFFFFFF),
                             fill = if (on) Color(0x29FFFFFF) else Color(0x0FFFFFFF),
@@ -131,18 +141,10 @@ fun BackgroundScreen(
                                 horizontalArrangement = Arrangement.spacedBy(20.dpx()),
                             ) {
                                 Box(
-                                    Modifier.size(28.dpx()).clip(CircleShape)
-                                        .background(Color.Transparent),
+                                    Modifier.size(28.dpx()).border(3.dpx(), Color.White, CircleShape),
+                                    contentAlignment = Alignment.Center,
                                 ) {
-                                    Pick(
-                                        selected = true, shape = CircleShape, onClick = {},
-                                        modifier = Modifier.size(28.dpx()).focusProperties { canFocus = false },
-                                        ringWidth = 3,
-                                    ) {
-                                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                            Box(Modifier.size(12.dpx()).background(if (on) Color.White else Color.Transparent, CircleShape))
-                                        }
-                                    }
+                                    Box(Modifier.size(12.dpx()).background(if (on) Color.White else Color.Transparent, CircleShape))
                                 }
                                 Column(verticalArrangement = Arrangement.spacedBy(2.dpx())) {
                                     Text(label, color = Color.White, fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 28.spx())
@@ -152,7 +154,10 @@ fun BackgroundScreen(
                         }
                     }
                     Label("CHANGE PHOTO", Modifier.padding(top = 8.dpx()))
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dpx())) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dpx()),
+                        verticalArrangement = Arrangement.spacedBy(12.dpx()),
+                    ) {
                         intervalDefs.forEach { (iv, label) ->
                             val on = settings.changeInterval == iv
                             Pick(
@@ -162,7 +167,7 @@ fun BackgroundScreen(
                                 unselectedRing = Color(0x33FFFFFF), ringWidth = 2,
                                 fill = if (on) Color.White else Color.Transparent,
                             ) {
-                                Box(Modifier.fillMaxSize().padding(horizontal = 20.dpx()), contentAlignment = Alignment.Center) {
+                                Box(Modifier.fillMaxSize().padding(horizontal = 24.dpx()), contentAlignment = Alignment.Center) {
                                     Text(
                                         label, color = if (on) Ink else Color.White, fontFamily = Outfit,
                                         fontWeight = FontWeight.W500, fontSize = 22.spx(), maxLines = 1,
