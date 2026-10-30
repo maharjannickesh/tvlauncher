@@ -43,8 +43,21 @@ case "$cmd" in
     [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
     mkdir -p "$ROOT/shots"
     "$ADB" -s "$s" exec-out screencap -p > "$ROOT/shots/$name.png" ;;
+  dream-set)
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell settings put secure screensaver_components com.nickesh.tvlauncher/.ScreensaverService
+    "$ADB" -s "$s" shell settings put secure screensaver_enabled 1
+    "$ADB" -s "$s" shell settings put secure screensaver_activate_on_sleep 1 ;;
   dream)
-    echo "dream: filled in by Task 9" >&2; exit 1 ;;
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell cmd dreams start 2>/dev/null | grep -qv "Unknown command" ||
+      "$ADB" -s "$s" shell service call dreams 1 >/dev/null ;; # API 34 has no `cmd dreams`; IDreamManager.dream() is transaction 1
+  dream-stop)
+    s="$(serial)"
+    [ -n "$s" ] || { echo "TV not found" >&2; exit 1; }
+    "$ADB" -s "$s" shell service call dreams 2 >/dev/null ;; # IDreamManager.awaken()
   *)
-    echo "usage: tv.sh {port|connect|install|shot <name>|dream}" >&2; exit 2 ;;
+    echo "usage: tv.sh {port|connect|install|shot <name>|dream-set|dream|dream-stop}" >&2; exit 2 ;;
 esac

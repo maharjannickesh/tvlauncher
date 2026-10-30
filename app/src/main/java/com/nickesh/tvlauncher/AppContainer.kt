@@ -26,11 +26,12 @@ class AppContainer(val context: Context) {
     val settings = SettingsRepository(settingsStore)
     val apps = AppsRepository(context)
     val systemIntents = SystemIntents(context)
+    val weatherCache = DataStoreWeatherCache(settingsStore)
     val weather = WeatherRepository(
         OpenMeteoClient(
             OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
             Json { ignoreUnknownKeys = true },
         ),
-        DataStoreWeatherCache(settingsStore),
+        weatherCache,
     )
 }
