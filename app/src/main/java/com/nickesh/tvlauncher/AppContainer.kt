@@ -1,6 +1,7 @@
 package com.nickesh.tvlauncher
 
 import android.content.Context
+import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
@@ -35,5 +36,6 @@ class AppContainer(val context: Context) {
             Json { ignoreUnknownKeys = true },
         ),
         weatherCache,
+        log = { Log.i("Weather", it) },
     )
 }

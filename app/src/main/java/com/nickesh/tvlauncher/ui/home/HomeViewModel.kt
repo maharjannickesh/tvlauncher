@@ -6,12 +6,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
 import com.nickesh.tvlauncher.data.settings.BackgroundSource
+import com.nickesh.tvlauncher.data.settings.CLOCK_SLOTS
 import com.nickesh.tvlauncher.data.settings.Scene
 import com.nickesh.tvlauncher.data.settings.Settings
 import com.nickesh.tvlauncher.domain.apps.AppOrdering
 import com.nickesh.tvlauncher.domain.apps.InstalledApp
 import com.nickesh.tvlauncher.domain.clock.ClockMath
 import com.nickesh.tvlauncher.domain.clock.ClockSnapshot
+import com.nickesh.tvlauncher.domain.clock.ClockWeather
 import com.nickesh.tvlauncher.domain.clock.TimeText
 import java.time.Instant
 import java.time.ZoneId
@@ -26,7 +28,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.withTimeoutOrNull
+import com.nickesh.tvlauncher.data.weather.Places
 import com.nickesh.tvlauncher.data.weather.WeatherFreshness
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -93,36 +97,55 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
 
     private val weatherRepo = container.weather
 
-    /** Latest weather for the configured city, or null until the first load succeeds (also read by the screensaver). */
-    val weather = MutableStateFlow<WeatherUi?>(null)
+    /** Big-card weather per place key ([Places.HOME] is the one shown); a key is null until its first load succeeds. */
+    private val _weatherByKey = MutableStateFlow<Map<String, WeatherUi?>>(emptyMap())
+    val weatherByKey: StateFlow<Map<String, WeatherUi?>> = _weatherByKey
+
+    /** Current conditions per place key, for the clock cards. */
+    private val _currentByKey = MutableStateFlow<Map<String, ClockWeather?>>(emptyMap())
+    val currentByKey: StateFlow<Map<String, ClockWeather?>> = _currentByKey
 
     private val refresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
-            container.settings.settings
-                .map { Triple(it.homeCity, it.unit, it.homeZone) }
-                .distinctUntilChanged()
-                .collectLatest { (city, unit, zone) ->
-                    while (true) {
-                        var ok = false
-                        try {
-                            val snap = weatherRepo.load(city, unit, zone)
-                            val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
-                            weather.value = ui
-                            ok = ui != null && WeatherFreshness.isFresh(snap, city, unit, System.currentTimeMillis())
-                        } catch (e: Exception) {
-                            if (e is CancellationException) throw e
+        // One loop per place slot (home, clock0..2); each restarts when its own place, the unit or the zone changes,
+        // so re-picking one clock leaves the others' timers alone.
+        val keys = listOf(Places.HOME) + (0 until CLOCK_SLOTS).map(Places::clock)
+        for (key in keys) {
+            viewModelScope.launch(Dispatchers.IO) {
+                container.settings.settings
+                    .map { s -> Places.fromSettings(s).firstOrNull { it.key == key }?.let { Triple(it, s.unit, s.homeZone) } }
+                    .distinctUntilChanged()
+                    .collectLatest { target ->
+                        if (target == null) {
+                            _weatherByKey.update { it - key }
+                            _currentByKey.update { it - key }
+                            return@collectLatest
                         }
-                        // Sleep until the next try (TTL, retry, or local midnight so the day columns roll over),
-                        // or until refreshNow() wakes us early.
-                        withTimeoutOrNull(WeatherFreshness.sleepMs(System.currentTimeMillis(), zone, ok)) { refresh.first() }
+                        val (place, unit, zone) = target
+                        while (true) {
+                            var ok = false
+                            try {
+                                val snap = weatherRepo.load(place, unit, zone)
+                                val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
+                                _weatherByKey.update { it + (key to ui) }
+                                _currentByKey.update { it + (key to snap?.let(weatherRepo::toCurrent)) }
+                                // The home card needs the day columns; a clock card only needs current conditions.
+                                val usable = if (key == Places.HOME) ui != null else snap != null
+                                ok = usable && WeatherFreshness.isFresh(snap, place, unit, System.currentTimeMillis())
+                            } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                            }
+                            // Sleep until the next try (TTL, retry, or local midnight so the day columns roll over),
+                            // or until refreshNow() wakes us early.
+                            withTimeoutOrNull(WeatherFreshness.sleepMs(System.currentTimeMillis(), zone, ok)) { refresh.first() }
+                        }
                     }
-                }
+            }
         }
     }
 
-    /** Wakes the weather loop now (activity start / return from standby); the repository's 30 min cache dedupes fresh data. */
+    /** Wakes every weather loop now (activity start / return from standby); the repository's 30 min cache dedupes fresh data. */
     fun refreshNow() {
         refresh.tryEmit(Unit)
     }
@@ -145,15 +168,21 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
         }
     }
 
-    private fun build(settings: Settings, allApps: List<AppTile>, weather: WeatherUi?, now: Instant): HomeUiState {
+    private fun build(
+        settings: Settings,
+        allApps: List<AppTile>,
+        weather: Map<String, WeatherUi?>,
+        current: Map<String, ClockWeather?>,
+        now: Instant,
+    ): HomeUiState {
         val home = now.atZone(ZoneId.of(settings.homeZone))
         return HomeUiState(
             greeting = ClockMath.greeting(home.hour, settings.name),
             homeCity = settings.homeCity,
             hero = ClockMath.timeText(home, settings.use24h),
             dateLine = ClockMath.dateLine(home),
-            weather = weather,
-            clocks = settings.clocks.map { ClockMath.snapshot(it, home, now, settings.use24h) },
+            weather = weather[Places.HOME],
+            clocks = settings.clocks.mapIndexed { i, c -> ClockMath.snapshot(c, home, now, settings.use24h, current[Places.clock(i)]) },
             apps = homeRow(allApps, settings.favourites),
             accent = Color(settings.accentArgb),
             settings = settings,
@@ -161,6 +190,10 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     }
 
     val state: StateFlow<HomeUiState> =
-        combine(container.settings.settings, container.apps.apps, weather, ticker, ::build)
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), build(Settings(), container.apps.apps.value, null, Instant.now()))
+        combine(container.settings.settings, container.apps.apps, weatherByKey, currentByKey, ticker, ::build)
+            .stateIn(
+                viewModelScope,
+                SharingStarted.WhileSubscribed(5_000),
+                build(Settings(), container.apps.apps.value, emptyMap(), emptyMap(), Instant.now()),
+            )
 }

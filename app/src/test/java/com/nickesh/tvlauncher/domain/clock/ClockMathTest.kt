@@ -1,6 +1,7 @@
 package com.nickesh.tvlauncher.domain.clock
 
 import com.nickesh.tvlauncher.data.settings.WorldClock
+import com.nickesh.tvlauncher.ui.home.WeatherKind
 import java.time.Instant
 import java.time.ZoneId
 import java.time.ZonedDateTime
@@ -96,5 +97,13 @@ class ClockMathTest {
         assertEquals(TimeText("6:45", "AM"), s.text)
         assertEquals("Tomorrow  ·  +9h 45m", s.meta)
         assertTrue(s.isDay)
+    }
+
+    @Test fun snapshotCarriesWeather() {
+        val now = Instant.parse("2026-10-30T01:00:00Z")
+        val home = now.atZone(newYork)
+        val w = ClockWeather(WeatherKind.RAIN, "48°")
+        assertEquals(w, ClockMath.snapshot(WorldClock("London", "Europe/London"), home, now, false, w).weather)
+        assertEquals(null, ClockMath.snapshot(WorldClock("London", "Europe/London"), home, now, false).weather)
     }
 }

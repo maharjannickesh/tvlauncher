@@ -1,6 +1,7 @@
 package com.nickesh.tvlauncher.domain.clock
 
 import com.nickesh.tvlauncher.data.settings.WorldClock
+import com.nickesh.tvlauncher.ui.home.WeatherKind
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -13,6 +14,9 @@ import kotlin.math.roundToInt
 
 data class TimeText(val time: String, val ampm: String) // ampm "" in 24h
 
+/** Current conditions for a clock card: icon kind and rounded temperature ("62°"). */
+data class ClockWeather(val kind: WeatherKind, val temp: String)
+
 data class ClockSnapshot(
     val city: String,
     val text: TimeText,
@@ -21,6 +25,7 @@ data class ClockSnapshot(
     val hourDeg: Float,
     val minuteDeg: Float,
     val secondDeg: Float,
+    val weather: ClockWeather? = null,
 )
 
 object ClockMath {
@@ -75,7 +80,7 @@ object ClockMath {
         return Triple(((h % 12f) + m / 60f) * 30f, (m + s / 60f) * 6f, s * 6f)
     }
 
-    fun snapshot(clock: WorldClock, home: ZonedDateTime, now: Instant, use24h: Boolean): ClockSnapshot {
+    fun snapshot(clock: WorldClock, home: ZonedDateTime, now: Instant, use24h: Boolean, weather: ClockWeather? = null): ClockSnapshot {
         val other = now.atZone(ZoneId.of(clock.zoneId))
         val (hourDeg, minuteDeg, secondDeg) = dialAngles(other)
         return ClockSnapshot(
@@ -86,6 +91,7 @@ object ClockMath {
             hourDeg = hourDeg,
             minuteDeg = minuteDeg,
             secondDeg = secondDeg,
+            weather = weather,
         )
     }
 

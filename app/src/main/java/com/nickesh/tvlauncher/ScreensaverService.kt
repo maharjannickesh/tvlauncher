@@ -26,6 +26,7 @@ import com.nickesh.tvlauncher.ui.home.WeatherUi
 import com.nickesh.tvlauncher.ui.screensaver.ScreensaverContent
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import java.time.Instant
+import com.nickesh.tvlauncher.data.weather.Places
 import com.nickesh.tvlauncher.data.weather.WeatherFreshness
 import java.time.LocalDate
 import java.time.ZoneId
@@ -67,7 +68,7 @@ class ScreensaverService : DreamService(), LifecycleOwner, SavedStateRegistryOwn
                     // just after local midnight so the day columns roll over.
                     while (true) {
                         value = zoneId?.let { z ->
-                            container.weatherCache.read()?.let { container.weather.toUi(it, LocalDate.now(ZoneId.of(z))) }
+                            container.weatherCache.read(Places.HOME)?.let { container.weather.toUi(it, LocalDate.now(ZoneId.of(z))) }
                         }
                         delay(zoneId?.let { WeatherFreshness.sleepMs(System.currentTimeMillis(), it, ok = true) } ?: WeatherFreshness.TTL_MS)
                     }
