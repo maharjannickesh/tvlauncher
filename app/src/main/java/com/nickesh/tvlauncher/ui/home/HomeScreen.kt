@@ -23,6 +23,7 @@ fun HomeScreen(
     onOpenSettings: () -> Unit,
     onLaunch: (AppTile) -> Unit,
     onAction: (SystemAction) -> Unit,
+    showInputs: Boolean = true,
 ) {
     CompositionLocalProvider(LocalAccent provides state.accent) {
         Box(Modifier.fillMaxSize()) {
@@ -30,7 +31,7 @@ fun HomeScreen(
             Column(
                 Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 60.dpx(), bottom = 56.dpx()),
             ) {
-                TopBar(state.greeting, state.homeCity, state.accent, onOpenSettings, onAction)
+                TopBar(state.greeting, state.homeCity, state.accent, onOpenSettings, onAction, showInputs)
                 Row(
                     Modifier.fillMaxWidth().padding(top = 44.dpx()),
                     horizontalArrangement = Arrangement.SpaceBetween,

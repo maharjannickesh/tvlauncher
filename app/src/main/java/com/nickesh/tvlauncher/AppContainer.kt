@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.nickesh.tvlauncher.data.apps.AppsRepository
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
+import com.nickesh.tvlauncher.data.system.SystemIntents
 import com.nickesh.tvlauncher.data.weather.DataStoreWeatherCache
 import com.nickesh.tvlauncher.data.weather.OpenMeteoClient
 import com.nickesh.tvlauncher.data.weather.WeatherRepository
@@ -24,6 +25,7 @@ class AppContainer(val context: Context) {
         ) { context.preferencesDataStoreFile("settings") }
     val settings = SettingsRepository(settingsStore)
     val apps = AppsRepository(context)
+    val systemIntents = SystemIntents(context)
     val weather = WeatherRepository(
         OpenMeteoClient(
             OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),

@@ -10,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -21,6 +22,7 @@ import com.nickesh.tvlauncher.ui.allapps.AllAppsScreen
 import com.nickesh.tvlauncher.ui.home.AppTile
 import com.nickesh.tvlauncher.ui.home.HomeScreen
 import com.nickesh.tvlauncher.ui.home.HomeViewModel
+import com.nickesh.tvlauncher.ui.home.SystemAction
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import com.nickesh.tvlauncher.ui.welcome.WelcomeScreen
 import kotlin.math.max
@@ -63,6 +65,7 @@ class MainActivity : ComponentActivity() {
                 mutableStateOf<Screen>(if (welcomeDone) Screen.Home else Screen.Welcome)
             }
             val homeViewModel = viewModel { HomeViewModel(container) }
+            val showInputs = remember { container.systemIntents.isAvailable(SystemAction.INPUTS) }
             val launch = { tile: AppTile ->
                 if (!container.apps.launch(tile.packageName)) {
                     Toast.makeText(this@MainActivity, "Can't open ${tile.label}", Toast.LENGTH_SHORT).show()
@@ -105,7 +108,12 @@ class MainActivity : ComponentActivity() {
                                 onOpenAllApps = { screen = Screen.AllApps },
                                 onOpenSettings = { screen = Screen.Settings },
                                 onLaunch = launch,
-                                onAction = { /* Task 8 */ },
+                                showInputs = showInputs,
+                                onAction = { action ->
+                                    if (!container.systemIntents.perform(action)) {
+                                        Toast.makeText(this@MainActivity, "Not available on this TV", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
                             )
                         }
                     }

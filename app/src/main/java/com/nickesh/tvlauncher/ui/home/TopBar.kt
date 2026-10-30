@@ -35,6 +35,7 @@ fun TopBar(
     accent: Color,
     onOpenSettings: () -> Unit,
     onAction: (SystemAction) -> Unit,
+    showInputs: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -58,7 +59,7 @@ fun TopBar(
         Row(horizontalArrangement = Arrangement.spacedBy(16.dpx()), verticalAlignment = Alignment.CenterVertically) {
             AssistPill(accent) { onAction(SystemAction.ASSIST) }
             RoundButton(Icons.Search, "Search", { onAction(SystemAction.SEARCH) })
-            RoundButton(Icons.Inputs, "Input source", { onAction(SystemAction.INPUTS) })
+            if (showInputs) RoundButton(Icons.Inputs, "Input source", { onAction(SystemAction.INPUTS) })
             RoundButton(Icons.Settings, "Settings", onOpenSettings)
             RoundButton(Icons.Profile, "Profile", { onAction(SystemAction.PROFILE) })
         }
