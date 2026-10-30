@@ -1,4 +1,0 @@
-#!/bin/bash
-S=/private/tmp/claude-502/-Users-maharjannickesh/7ee63d87-5613-44e0-9fe6-26856f29fc6d/scratchpad
-$S/a shell monkey -p com.google.android.youtube.tv -c android.intent.category.LEANBACK_LAUNCHER 1 >/dev/null 2>&1; sleep 4
-echo "yt top: $($S/a shell dumpsys activity activities | grep -m1 topResumedActivity | tr -d '\r')"
