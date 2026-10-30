@@ -12,6 +12,7 @@ Nickesh's own list, in his words, with the decisions he made when asked:
 4. "the current timezone picks is only limited to few; it should show all" → the full IANA zone list, grouped by region.
 5. "the search and ask gemini button both does same thing, so search may be we can take user to all apps search" → the Search button opens All apps with a type-to-filter field.
 6. "on top where is says Good afternoon, make it to Good Afternoon, Nickesh" → the top-bar greeting is title-cased and carries the name from Settings: "Good Morning, Nickesh" / "Good Afternoon, Nickesh" / "Good Evening, Nickesh" (and whatever other greeting `ClockMath.greeting` already produces, same casing rule), exactly "Good Afternoon, Nickesh" for the afternoon.
+7. "lets add timer for screensaver as well in setting" → a Settings row that sets how long the TV sits idle before the screensaver starts (the TV's own `screen_off_timeout`, the value `tools/tv.sh idle-set` writes), chosen from a list, applied on Save.
 
 ## Goals
 
@@ -22,6 +23,7 @@ Nickesh's own list, in his words, with the decisions he made when asked:
 - G5 The zone list contains every `ZoneId.getAvailableZoneIds()` entry under its region (Africa, America, Antarctica, Asia, Atlantic, Australia, Europe, Indian, Pacific, Etc/other), sorted, navigable with the remote; current value pre-focused.
 - G6 Search (top bar) opens All apps with a search field focused; typing filters the grid by label, case-insensitive, as you type; empty query shows all; Back from the field clears the query first, then leaves.
 - G8 Greeting reads "Good Afternoon, Nickesh" (title case, comma, name from Settings; an empty name drops the comma and name).
+- G9 Settings row **Screensaver after** with a list of 1, 2, 5, 10, 15, 30, 60 minutes (current TV value pre-selected, shown as "10 min"; a value outside the list is shown as-is, e.g. "7 min"). Applied on Save by writing `Settings.System.SCREEN_OFF_TIMEOUT`. This needs the "Modify system settings" permission (`WRITE_SETTINGS`): if it is not granted, Save still saves everything else, the row shows "Needs permission ›", and pressing it opens the system page for our app (`Settings.ACTION_MANAGE_WRITE_SETTINGS`); `tools/tv.sh` gets `idle-perm` that grants it over adb (`appops set com.nickesh.tvlauncher WRITE_SETTINGS allow`) for the dev loop.
 - G7 Weather for four cities (home + 3 clocks) is fetched and cached independently with the existing 30-minute TTL, degrades to cached/placeholder exactly as today, and never blocks the clocks from ticking.
 
 ## Non-goals
@@ -83,7 +85,13 @@ Nickesh's own list, in his words, with the decisions he made when asked:
 
 - `ClockMath.greeting(hour, name)` returns `"Good Morning, Nickesh"` etc.; title case on both words; `name` blank → `"Good Morning"`. The hour bands are unchanged. Pure, tested (each band, with and without a name).
 
-### 7. Settings migration
+### 7. Screensaver timer row
+
+- Row "Screensaver after" between "Show seconds" and "Background…"; OK opens a right-side list panel (same panel slot as the city picker) with the seven values, current one focused; OK picks and closes. The value is part of the draft (`draft.screensaverAfterMinutes: Int?`, read from `Settings.System.getInt(SCREEN_OFF_TIMEOUT)` when Settings opens, null if unreadable) and part of the dirty check.
+- Save: when it changed and `Settings.System.canWrite(context)` → `Settings.System.putInt(resolver, SCREEN_OFF_TIMEOUT, minutes * 60_000)` and log; when not grantable → everything else saves, a toast "Screensaver timer needs 'Modify system settings' — tap the row to grant" and the row's value becomes "Needs permission ›" whose OK opens `Settings.ACTION_MANAGE_WRITE_SETTINGS` with our package URI (fallback toast with the manual path if it does not resolve). The 30-minute standby delay (`sleep_timeout`) is left alone.
+- Pure, tested: `IdleOptions.label(minutes)`, `IdleOptions.values`, `IdleOptions.indexFor(minutes)`.
+
+### 8. Settings migration
 
 - On first load after update: `weatherCity` key ignored; `homeLat/homeLon` null; clocks' `lat/lon` null; everything else as before. No data loss; weather geocodes by name until the user picks a result.
 
@@ -106,6 +114,6 @@ Nickesh's own list, in his words, with the decisions he made when asked:
 
 ## Verification
 
-- Unit: `ClockMath.greeting` bands with/without name; `ZoneCatalog` (every available zone appears exactly once across regions; `regionOf`), `ClockEdit.applyMatch`, `AppFilter`, `WeatherRepository` per-key cache + freshness (adapt existing tests), geocode JSON mapping with `admin1`/`country`, `ClockMath.snapshot` carrying weather.
+- Unit: `ClockMath.greeting` bands with/without name; `IdleOptions`; `ZoneCatalog` (every available zone appears exactly once across regions; `regionOf`), `ClockEdit.applyMatch`, `AppFilter`, `WeatherRepository` per-key cache + freshness (adapt existing tests), geocode JSON mapping with `admin1`/`country`, `ClockMath.snapshot` carrying weather.
 - Lint 0 errors; suite green.
-- Device (screenshots `shots/v11-*.png`): Settings with the panel open for Clock 1; typing "Lisbon" → results → pick → row shows "Lisbon · Europe/Lisbon"; zone list for region Europe with the current zone focused; Save → Home shows Lisbon's time and weather on the card; Back with a dirty draft → prompt → Keep editing / Discard; Search button → All apps with the field focused → typing "you" filters to YouTube apps; old-install path: fresh install with v1 settings still shows home weather.
+- Device (screenshots `shots/v11-*.png`): Settings with the panel open for Clock 1; typing "Lisbon" → results → pick → row shows "Lisbon · Europe/Lisbon"; zone list for region Europe with the current zone focused; Save → Home shows Lisbon's time and weather on the card; Back with a dirty draft → prompt → Keep editing / Discard; "Screensaver after" → list → pick 5 min → Save → `settings get system screen_off_timeout` reads 300000 (then set back to 10); with the permission revoked (`appops set … WRITE_SETTINGS deny`) the row shows "Needs permission" and OK opens the system page; Search button → All apps with the field focused → typing "you" filters to YouTube apps; old-install path: fresh install with v1 settings still shows home weather.
