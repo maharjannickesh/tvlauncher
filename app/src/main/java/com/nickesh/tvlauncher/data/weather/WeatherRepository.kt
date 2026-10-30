@@ -8,7 +8,9 @@ import com.nickesh.tvlauncher.data.settings.TempUnit
 import com.nickesh.tvlauncher.domain.weather.WeatherCode
 import com.nickesh.tvlauncher.ui.home.DayForecast
 import com.nickesh.tvlauncher.ui.home.WeatherUi
+import java.time.Instant
 import java.time.LocalDate
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import kotlin.coroutines.cancellation.CancellationException
@@ -122,4 +124,19 @@ object WeatherFreshness {
 
     fun isFresh(s: WeatherSnapshot?, city: String, unit: TempUnit, nowMs: Long): Boolean =
         s != null && s.city == city && s.unit == unit && nowMs - s.fetchedAtEpochMs < WeatherFreshness.TTL_MS
+
+    const val RETRY_MS = 90_000L
+
+    /**
+     * How long the weather loop sleeps: the TTL after a fresh load, [RETRY_MS] otherwise, but never past the next
+     * local midnight in [zone] (plus 1 s), so the day columns re-slice for the new date instead of lagging up to 30 min.
+     * An unparseable zone falls back to the TTL/retry so a bad setting cannot stall the loop.
+     */
+    fun sleepMs(nowMs: Long, zone: String, ok: Boolean): Long {
+        val base = if (ok) TTL_MS else RETRY_MS
+        val zoneId = runCatching { ZoneId.of(zone) }.getOrNull() ?: return base
+        val now = Instant.ofEpochMilli(nowMs).atZone(zoneId)
+        val midnight = now.toLocalDate().plusDays(1).atStartOfDay(zoneId).toInstant().toEpochMilli()
+        return minOf(base, midnight - nowMs + 1_000)
+    }
 }

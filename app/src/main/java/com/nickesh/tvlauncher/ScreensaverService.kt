@@ -26,6 +26,7 @@ import com.nickesh.tvlauncher.ui.home.WeatherUi
 import com.nickesh.tvlauncher.ui.screensaver.ScreensaverContent
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import java.time.Instant
+import com.nickesh.tvlauncher.data.weather.WeatherFreshness
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.delay
@@ -62,12 +63,13 @@ class ScreensaverService : DreamService(), LifecycleOwner, SavedStateRegistryOwn
                 val settings by container.settings.settings.collectAsState(null)
                 val zoneId = settings?.homeZone
                 val weather by produceState<WeatherUi?>(null, zoneId) {
-                    // Re-read the cache every 30 min while dreaming (the Home loop refreshes it).
+                    // Re-read the cache every 30 min while dreaming (the Home loop refreshes it), and again
+                    // just after local midnight so the day columns roll over.
                     while (true) {
                         value = zoneId?.let { z ->
                             container.weatherCache.read()?.let { container.weather.toUi(it, LocalDate.now(ZoneId.of(z))) }
                         }
-                        delay(30 * 60_000L)
+                        delay(zoneId?.let { WeatherFreshness.sleepMs(System.currentTimeMillis(), it, ok = true) } ?: WeatherFreshness.TTL_MS)
                     }
                 }
                 var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }

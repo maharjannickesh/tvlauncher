@@ -19,7 +19,6 @@ import java.time.LocalDate
 import java.time.ZonedDateTime
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -115,8 +114,9 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
                         }
-                        // Sleep until the next try, or until refreshNow() wakes us early.
-                        withTimeoutOrNull(if (ok) 30.minutes else 90.seconds) { refresh.first() }
+                        // Sleep until the next try (TTL, retry, or local midnight so the day columns roll over),
+                        // or until refreshNow() wakes us early.
+                        withTimeoutOrNull(WeatherFreshness.sleepMs(System.currentTimeMillis(), zone, ok)) { refresh.first() }
                     }
                 }
         }

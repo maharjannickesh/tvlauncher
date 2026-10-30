@@ -141,4 +141,23 @@ class WeatherRepositoryTest {
         assertEquals(false, WeatherFreshness.isFresh(snap(at = now - 1 * min), "Columbus", TempUnit.C, now))
         assertEquals(false, WeatherFreshness.isFresh(null, "Columbus", TempUnit.F, now))
     }
+
+    @Test fun sleepUntil_isCappedAtTtl_butWakesJustAfterLocalMidnight() {
+        val zone = "America/New_York"
+        // 23:50 local, fresh: 10 min + 1 s to midnight beats the 30 min TTL.
+        val lateEvening = java.time.ZonedDateTime.of(2026, 10, 29, 23, 50, 0, 0, java.time.ZoneId.of(zone)).toInstant().toEpochMilli()
+        assertEquals(10 * min + 1_000, WeatherFreshness.sleepMs(lateEvening, zone, ok = true))
+        // 23:59:30 local, not fresh: 30 s + 1 s to midnight beats the 90 s retry.
+        val lastHalfMinute = lateEvening + 9 * min + 30_000
+        assertEquals(31_000L, WeatherFreshness.sleepMs(lastHalfMinute, zone, ok = false))
+        // Midday: the TTL / retry win.
+        val noon = java.time.ZonedDateTime.of(2026, 10, 29, 12, 0, 0, 0, java.time.ZoneId.of(zone)).toInstant().toEpochMilli()
+        assertEquals(WeatherFreshness.TTL_MS, WeatherFreshness.sleepMs(noon, zone, ok = true))
+        assertEquals(90_000L, WeatherFreshness.sleepMs(noon, zone, ok = false))
+        // Exactly midnight: not zero; next midnight is a full day away so the TTL wins.
+        val midnight = lateEvening + 10 * min
+        assertEquals(WeatherFreshness.TTL_MS, WeatherFreshness.sleepMs(midnight, zone, ok = true))
+        // A bad zone id falls back to the TTL instead of crashing the loop.
+        assertEquals(WeatherFreshness.TTL_MS, WeatherFreshness.sleepMs(noon, "Nowhere/Land", ok = true))
+    }
 }
