@@ -5,30 +5,20 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.nickesh.tvlauncher.data.settings.Settings
-import com.nickesh.tvlauncher.domain.clock.ClockMath
-import com.nickesh.tvlauncher.ui.background.Background
-import com.nickesh.tvlauncher.ui.theme.Outfit
+import com.nickesh.tvlauncher.ui.home.HomeScreen
+import com.nickesh.tvlauncher.ui.home.HomeViewModel
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
-import com.nickesh.tvlauncher.ui.theme.spx
 import com.nickesh.tvlauncher.ui.welcome.WelcomeScreen
-import java.time.ZoneId
-import java.time.ZonedDateTime
 import kotlinx.coroutines.delay
 
 sealed interface Screen {
@@ -38,6 +28,19 @@ sealed interface Screen {
     data object Settings : Screen
     data object Background : Screen
 }
+
+private val ScreenSaver = Saver<Screen, String>(
+    save = { it.toString() },
+    restore = {
+        when (it) {
+            "Welcome" -> Screen.Welcome
+            "AllApps" -> Screen.AllApps
+            "Settings" -> Screen.Settings
+            "Background" -> Screen.Background
+            else -> Screen.Home
+        }
+    },
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,9 +52,11 @@ class MainActivity : ComponentActivity() {
             val accent = Color(settings.accentArgb)
             // Shown on every cold start; survives rotation/recreation only.
             var welcomeDone by rememberSaveable { mutableStateOf(false) }
-            var screen by remember {
+            var screen by rememberSaveable(stateSaver = ScreenSaver) {
                 mutableStateOf<Screen>(if (welcomeDone) Screen.Home else Screen.Welcome)
             }
+            val homeViewModel = viewModel { HomeViewModel(container) }
+            val homeState by homeViewModel.state.collectAsStateWithLifecycle()
             TvLauncherTheme(accent = accent) {
                 Crossfade(targetState = screen, animationSpec = tween(400), label = "screen") { s ->
                     when (s) {
@@ -64,34 +69,16 @@ class MainActivity : ComponentActivity() {
                             }
                             WelcomeScreen(settings.name, accent, settings)
                         }
-                        else -> HomePlaceholder(settings)
+                        else -> HomeScreen(
+                            state = homeState,
+                            onOpenAllApps = { screen = Screen.AllApps },
+                            onOpenSettings = { screen = Screen.Settings },
+                            onLaunch = { /* Task 6 */ },
+                            onAction = { /* Task 8 */ },
+                        )
                     }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HomePlaceholder(settings: Settings) {
-    val zone = remember(settings.homeZone) { ZoneId.of(settings.homeZone) }
-    var now by remember { mutableStateOf(ZonedDateTime.now(zone)) }
-    LaunchedEffect(zone) {
-        while (true) {
-            now = ZonedDateTime.now(zone)
-            delay(60_000 - (System.currentTimeMillis() % 60_000))
-        }
-    }
-    val t = ClockMath.timeText(now, settings.use24h)
-    Box(Modifier.fillMaxSize()) {
-        Background(settings)
-        Text(
-            t.time,
-            color = Color.White,
-            fontSize = 200.spx(),
-            fontFamily = Outfit,
-            fontWeight = FontWeight.W200,
-            modifier = Modifier.align(Alignment.Center),
-        )
     }
 }
