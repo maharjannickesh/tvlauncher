@@ -17,5 +17,9 @@ class SettingsDraftTest {
     }
     @Test fun backgroundChange_isNotDirty() { assertFalse(SettingsDraftRules.isDirty(saved, saved.copy(scene = Scene.FOREST), 10, 10)) }
     @Test fun ownedFieldChange_isDirty() { assertTrue(SettingsDraftRules.isDirty(saved, saved.copy(homeCity = "Lisbon"), 10, 10)) }
+    @Test fun coordinateAndClockChanges_areDirty() {
+        assertTrue(SettingsDraftRules.isDirty(saved, saved.copy(homeLat = 1.0), 10, 10))
+        assertTrue(SettingsDraftRules.isDirty(saved, saved.copy(clocks = saved.clocks.drop(1)), 10, 10))
+    }
     @Test fun minutesChange_isDirty() { assertTrue(SettingsDraftRules.isDirty(saved, saved, 10, 5)); assertFalse(SettingsDraftRules.isDirty(saved, saved, null, null)) }
 }

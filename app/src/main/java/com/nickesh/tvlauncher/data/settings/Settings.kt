@@ -1,5 +1,6 @@
 package com.nickesh.tvlauncher.data.settings
 
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.doublePreferencesKey
@@ -86,6 +87,20 @@ internal object SettingsKeys {
     val screensaverDim = floatPreferencesKey("screensaver_dim")
     val screensaverSeconds = booleanPreferencesKey("screensaver_seconds")
     val favourites = stringPreferencesKey("favourites")
+
+    /** Keys that are only written when non-null, so they must be removed when a setting clears them. */
+    val optionalKeys: List<Preferences.Key<*>> =
+        listOf(homeLat, homeLon) + (0 until CLOCK_SLOTS).flatMap { listOf(clockLat(it), clockLon(it)) }
+}
+
+/** Writes every present key of [s] and removes optional keys that [s] no longer has. */
+fun MutablePreferences.applySettings(s: Settings) {
+    val map = s.toPreferences().asMap()
+    map.forEach { (k, v) ->
+        @Suppress("UNCHECKED_CAST")
+        this[k as Preferences.Key<Any>] = v
+    }
+    SettingsKeys.optionalKeys.forEach { if (it !in map) remove(it) }
 }
 
 fun Settings.toPreferences(): Preferences {

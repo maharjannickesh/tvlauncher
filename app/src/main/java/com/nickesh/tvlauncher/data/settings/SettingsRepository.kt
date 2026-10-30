@@ -11,10 +11,7 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
 
     suspend fun update(transform: (Settings) -> Settings) {
         store.edit { prefs ->
-            transform(prefs.toSettings()).toPreferences().asMap().forEach { (k, v) ->
-                @Suppress("UNCHECKED_CAST")
-                prefs[k as Preferences.Key<Any>] = v
-            }
+            prefs.applySettings(transform(prefs.toSettings()))
         }
     }
 }

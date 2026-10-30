@@ -1,6 +1,7 @@
 package com.nickesh.tvlauncher.data.settings
 
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.doublePreferencesKey
 import androidx.datastore.preferences.core.mutablePreferencesOf
 import androidx.datastore.preferences.core.stringPreferencesKey
 import org.junit.Assert.assertNull
@@ -53,5 +54,13 @@ class SettingsMappingTest {
         val prefs = mutablePreferencesOf(stringPreferencesKey("weather_city") to "Columbus, OH")
         assertEquals("Columbus, OH", prefs.toSettings().legacyWeatherCity)
         assertNull(Settings(legacyWeatherCity = "X").toPreferences()[stringPreferencesKey("weather_city")])
+    }
+
+    @Test fun applySettings_removesClearedCoordinates_andOverwritesPresent() {
+        val prefs = Settings(homeLat = 1.0, homeLon = 2.0, clocks = List(3) { WorldClock("P", "UTC", 3.0, 4.0) }).toPreferences().toMutablePreferences()
+        prefs.applySettings(Settings(homeLat = null, homeLon = 5.0, clocks = List(3) { WorldClock("P", "UTC", if (it == 0) null else 6.0, 4.0) }))
+        val back = prefs.toSettings()
+        assertNull(prefs[doublePreferencesKey("home_lat")]); assertNull(back.homeLat); assertEquals(5.0, back.homeLon!!, 1e-9)
+        assertNull(prefs[doublePreferencesKey("clock0_lat")]); assertNull(back.clocks[0].lat); assertEquals(6.0, back.clocks[1].lat!!, 1e-9)
     }
 }
