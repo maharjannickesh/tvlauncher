@@ -60,7 +60,13 @@ class WeatherRepository(
 ) {
     /** Cached when same city/unit and under 30 min old; otherwise fetched. On any failure: the cache (even stale), else null. */
     suspend fun load(city: String, unit: TempUnit, zone: String): WeatherSnapshot? {
-        val cached = cache.read()
+        val cached = try {
+            cache.read()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            null
+        }
         val now = clock()
         if (cached != null && cached.city == city && cached.unit == unit && now - cached.fetchedAtEpochMs < TTL_MS) {
             return cached
@@ -76,27 +82,29 @@ class WeatherRepository(
         }
     }
 
-    /** Day names come from the forecast's own dates (already in the requested zone), so [homeDate] is not needed in v1. */
+    /** Null when the forecast lacks today or any of the next four days. Day names come from the forecast's own dates (already in the requested zone), so [homeDate] is not needed in v1. */
     @Suppress("UNUSED_PARAMETER")
-    fun toUi(s: WeatherSnapshot, homeDate: LocalDate): WeatherUi {
+    fun toUi(s: WeatherSnapshot, homeDate: LocalDate): WeatherUi? {
         val f = s.forecast
         val d = f.daily
+        val hi = d.temperature_2m_max.getOrNull(0) ?: return null
+        val lo = d.temperature_2m_min.getOrNull(0) ?: return null
         fun t(v: Double) = "${v.roundToInt()}°"
-        val days = (1..4).filter { it < d.time.size && it < d.weather_code.size && it < d.temperature_2m_max.size && it < d.temperature_2m_min.size }
-            .map { i ->
-                DayForecast(
-                    day = LocalDate.parse(d.time[i]).format(DAY),
-                    kind = WeatherCode.kind(d.weather_code[i]),
-                    hi = t(d.temperature_2m_max[i]),
-                    lo = t(d.temperature_2m_min[i]),
-                )
-            }
+        val days = (1..4).mapNotNull { i ->
+            val date = d.time.getOrNull(i)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
+            val code = d.weather_code.getOrNull(i)
+            val dayHi = d.temperature_2m_max.getOrNull(i)
+            val dayLo = d.temperature_2m_min.getOrNull(i)
+            if (date == null || code == null || dayHi == null || dayLo == null) null
+            else DayForecast(date.format(DAY), WeatherCode.kind(code), t(dayHi), t(dayLo))
+        }
+        if (days.size < 4) return null
         return WeatherUi(
             city = s.city,
             now = t(f.current.temperature_2m),
             condition = WeatherCode.label(f.current.weather_code),
-            hi = t(d.temperature_2m_max[0]),
-            lo = t(d.temperature_2m_min[0]),
+            hi = t(hi),
+            lo = t(lo),
             kind = WeatherCode.kind(f.current.weather_code),
             forecast = days,
         )

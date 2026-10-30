@@ -51,6 +51,7 @@ class WeatherRepositoryTest {
         val api = FakeApi(); val cache = MemoryCache()
         val s = WeatherRepository(api, cache) { now }.load("Columbus", TempUnit.F, "America/New_York")
         assertNotNull(s)
+        assertEquals(1, api.geocodeCalls)
         assertEquals(1, api.forecastCalls)
         assertEquals(1, cache.writes)
         assertEquals(now, cache.value!!.fetchedAtEpochMs)
@@ -91,7 +92,7 @@ class WeatherRepositoryTest {
     }
 
     @Test fun toUi_roundsAndTakesNext4Days() {
-        val ui = WeatherRepository(FakeApi(), MemoryCache()) { now }.toUi(snap(at = now), LocalDate.of(2026, 10, 29))
+        val ui = WeatherRepository(FakeApi(), MemoryCache()) { now }.toUi(snap(at = now), LocalDate.of(2026, 10, 29))!!
         assertEquals("62°", ui.now)
         assertEquals("64°", ui.hi)
         assertEquals("47°", ui.lo)
@@ -99,5 +100,15 @@ class WeatherRepositoryTest {
         assertEquals(4, ui.forecast.size)
         assertEquals("Fri", ui.forecast[0].day)
         assertEquals("59°", ui.forecast[1].hi)
+    }
+
+    @Test fun toUi_shortDaily_returnsNull() {
+        val repo = WeatherRepository(FakeApi(), MemoryCache()) { now }
+        for (n in 0..1) {
+            val f = sampleForecast()
+            val d = f.daily
+            val short = f.copy(daily = Forecast.Daily(d.time.take(n), d.weather_code.take(n), d.temperature_2m_max.take(n), d.temperature_2m_min.take(n)))
+            assertNull("n=$n", repo.toUi(WeatherSnapshot("Columbus", TempUnit.F, short, now), LocalDate.of(2026, 10, 29)))
+        }
     }
 }

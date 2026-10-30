@@ -15,7 +15,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.LocalDate
 import java.time.ZonedDateTime
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -95,9 +97,16 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                 .distinctUntilChanged()
                 .collectLatest { (city, unit, zone) ->
                     while (true) {
-                        weather.value = weatherRepo.load(city, unit, zone)
-                            ?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
-                        delay(30.minutes)
+                        var ok = false
+                        try {
+                            val ui = weatherRepo.load(city, unit, zone)
+                                ?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
+                            weather.value = ui
+                            ok = ui != null
+                        } catch (e: Exception) {
+                            if (e is CancellationException) throw e
+                        }
+                        delay(if (ok) 30.minutes else 90.seconds)
                     }
                 }
         }
