@@ -44,7 +44,7 @@ fun AppsRow(
     modifier: Modifier = Modifier,
 ) {
     val first = remember { FocusRequester() }
-    LaunchedEffect(Unit) { runCatching { first.requestFocus() } }
+    LaunchedEffect(apps.firstOrNull()?.packageName) { runCatching { first.requestFocus() } }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(18.dpx())) {
         Text("Your apps", color = Color.White.copy(alpha = 0.9f), fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 26.spx())
         Row(horizontalArrangement = Arrangement.spacedBy(22.dpx()), verticalAlignment = Alignment.Top) {
