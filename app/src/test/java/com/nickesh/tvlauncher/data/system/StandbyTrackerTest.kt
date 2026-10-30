@@ -34,4 +34,11 @@ class StandbyTrackerTest {
     }
 
     @Test fun stillAsleep_noReplay() { tracker.onScreenOff(); now += 20 * min; assertFalse(tracker.takeReplay()) }
+
+    @Test fun startBeforeScreenOnBroadcast_stillReplays() {
+        tracker.onScreenOff(); now += 11 * min; tracker.onInteractiveStart()
+        assertTrue(tracker.takeReplay()); now += 1_000; tracker.onScreenOn(); assertFalse(tracker.takeReplay())
+    }
+
+    @Test fun interactiveStartWithoutOff_noReplay() { tracker.onInteractiveStart(); assertFalse(tracker.takeReplay()) }
 }

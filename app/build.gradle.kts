@@ -15,12 +15,14 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        buildConfigField("long", "WELCOME_REPLAY_MS", "600000L")
     }
 
     buildTypes {
         debug {
             // `-Pprobe=true` builds a second installable copy (used to prove focus on uninstall).
             if (project.hasProperty("probe")) applicationIdSuffix = ".probe"
+            (project.findProperty("welcomeReplayMs") as String?)?.let { buildConfigField("long", "WELCOME_REPLAY_MS", "${it}L") }
         }
     }
 
@@ -29,6 +31,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

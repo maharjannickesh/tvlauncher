@@ -27,6 +27,15 @@ class StandbyTracker(private val clock: () -> Long = SystemClock::elapsedRealtim
         screenOnAt = clock()
     }
 
+    /**
+     * Called when the UI starts while the display is interactive. On the Chromecast the activity's
+     * ON_START arrives ~1.3 s before ACTION_SCREEN_ON, so an off with no matching on yet is treated
+     * as ending now.
+     */
+    fun onInteractiveStart() {
+        if (screenOffAt != null && screenOnAt == null) screenOnAt = clock()
+    }
+
     /** Returns whether the most recent off→on cycle qualifies for a replay, then clears it. */
     fun takeReplay(thresholdMs: Long = WelcomeReplay.THRESHOLD_MS): Boolean {
         val replay = WelcomeReplay.shouldReplay(screenOffAt, screenOnAt, thresholdMs)

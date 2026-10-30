@@ -25,5 +25,6 @@ class TvLauncherApp : Application() {
             override fun onReceive(context: Context, intent: Intent) = container.apps.refresh()
         }
         ContextCompat.registerReceiver(this, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        container.standby.register(this)
     }
 }
