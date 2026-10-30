@@ -56,4 +56,4 @@ Search raises the TV keyboard automatically when All apps opens; no extra OK nee
 
 ## Owed
 
-- Device walk of the empty-City-field fix (edit Clock 2 twice in a row: Paris, then Abu Dhabi) — not run because the TV was in use (Netflix) when the fix landed. The fixed build is installed.
+Done 2026-10-30, see v1-1-picker-walk.md
