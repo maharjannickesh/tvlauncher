@@ -22,6 +22,7 @@ import com.nickesh.tvlauncher.ui.theme.dpx
 fun HomeScreen(
     state: HomeUiState,
     onOpenAllApps: () -> Unit,
+    onOpenAllAppsSearch: () -> Unit,
     onOpenSettings: () -> Unit,
     onLaunch: (AppTile) -> Unit,
     onAction: (SystemAction) -> Unit,
@@ -34,7 +35,7 @@ fun HomeScreen(
             Column(
                 Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 60.dpx(), bottom = 56.dpx()),
             ) {
-                TopBar(state.greeting, state.homeCity, state.accent, onOpenSettings, onAction, showInputs, assistRequester = assist)
+                TopBar(state.greeting, state.homeCity, state.accent, onOpenSettings, onAction, onOpenAllAppsSearch, showInputs, assistRequester = assist)
                 Row(
                     Modifier.fillMaxWidth().padding(top = 44.dpx()),
                     horizontalArrangement = Arrangement.SpaceBetween,

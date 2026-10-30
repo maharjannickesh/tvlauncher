@@ -14,7 +14,30 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.tv.material3.Icon
+import com.nickesh.tvlauncher.domain.apps.AppFilter
+import com.nickesh.tvlauncher.ui.theme.Glass
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,20 +58,60 @@ import com.nickesh.tvlauncher.ui.theme.spx
 @Composable
 fun AllAppsScreen(
     apps: List<AppTile>,
+    focusSearch: Boolean,
     settings: Settings,
     accent: Color,
     onLaunch: (AppTile) -> Unit,
     onBack: () -> Unit,
 ) {
-    BackHandler { onBack() }
+    var query by remember { mutableStateOf("") }
     val first = remember { FocusRequester() }
-    LaunchedEffect(apps.isNotEmpty()) { if (apps.isNotEmpty()) runCatching { first.requestFocus() } }
+    val search = remember { FocusRequester() }
+    val shown = remember(apps, query) { AppFilter.filter(apps, query) { it.label } }
+    BackHandler {
+        if (query.isNotEmpty()) { query = ""; runCatching { search.requestFocus() } } else onBack()
+    }
+    LaunchedEffect(focusSearch, apps.isNotEmpty()) {
+        if (focusSearch) runCatching { search.requestFocus() }
+        else if (apps.isNotEmpty()) runCatching { first.requestFocus() }
+    }
     Box(Modifier.fillMaxSize()) {
         Background(settings, dim = 0.5f, scrim = false)
         Column(Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 60.dpx(), bottom = 56.dpx())) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(24.dpx())) {
                 RoundButton(Icons.Back, "Back", onBack)
                 Text("All apps", color = Color.White, fontFamily = Outfit, fontWeight = FontWeight.W400, fontSize = 48.spx())
+            }
+            val pillShape = RoundedCornerShape(28.dpx())
+            Row(
+                Modifier.padding(top = 24.dpx()).width(520.dpx()).height(56.dpx())
+                    .clip(pillShape).background(Glass.fill, pillShape).border(1.dpx(), Glass.border, pillShape)
+                    .padding(horizontal = 20.dpx()),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(14.dpx()),
+            ) {
+                Icon(Icons.Search, null, Modifier.size(24.dpx()), tint = Color.White)
+                BasicTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    singleLine = true,
+                    textStyle = TextStyle(color = Color.White, fontFamily = Outfit, fontSize = 24.spx()),
+                    cursorBrush = SolidColor(Color.White),
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                    modifier = Modifier.weight(1f).focusRequester(search).onPreviewKeyEvent {
+                        if (it.key == Key.DirectionDown && it.type == KeyEventType.KeyDown && shown.isNotEmpty()) {
+                            runCatching { first.requestFocus() }.isSuccess
+                        } else false
+                    },
+                    decorationBox = { inner ->
+                        Box(contentAlignment = Alignment.CenterStart) {
+                            if (query.isEmpty()) {
+                                Text("Search apps", color = Color.White.copy(alpha = 0.5f), fontFamily = Outfit, fontSize = 24.spx())
+                            }
+                            inner()
+                        }
+                    },
+                )
             }
             LazyVerticalGrid(
                 columns = GridCells.Fixed(6),
@@ -57,7 +120,7 @@ fun AllAppsScreen(
                 verticalArrangement = Arrangement.spacedBy(28.dpx()),
                 horizontalArrangement = Arrangement.spacedBy(22.dpx(), Alignment.CenterHorizontally),
             ) {
-                itemsIndexed(apps, key = { _, app -> app.packageName }) { i, app ->
+                itemsIndexed(shown, key = { _, app -> app.packageName }) { i, app ->
                     Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
                         AppTileButton(
                             app = app,

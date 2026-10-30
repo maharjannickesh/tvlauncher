@@ -1,6 +1,5 @@
 package com.nickesh.tvlauncher.data.system
 
-import android.app.SearchManager
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -15,10 +14,6 @@ class SystemIntents(private val context: Context) {
 
     fun candidates(action: SystemAction): List<Intent> = when (action) {
         SystemAction.ASSIST -> assist()
-        SystemAction.SEARCH -> listOf(
-            Intent(SearchManager.INTENT_ACTION_GLOBAL_SEARCH),
-            Intent(Intent.ACTION_SEARCH),
-        ) + assist()
         SystemAction.INPUTS -> listOf(Intent("com.android.tv.settings.INPUTS"))
         SystemAction.PROFILE -> listOf(
             Intent(Settings.ACTION_SYNC_SETTINGS),

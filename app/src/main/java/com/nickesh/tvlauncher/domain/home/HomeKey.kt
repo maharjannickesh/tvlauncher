@@ -7,6 +7,6 @@ object HomeKey {
     /** Screen to show when the HOME intent arrives, or null for no change. */
     fun next(current: Screen): Screen? = when (current) {
         Screen.Home, Screen.Welcome -> null
-        Screen.AllApps, Screen.Settings, Screen.Background -> Screen.Home
+        is Screen.AllApps, Screen.Settings, Screen.Background -> Screen.Home
     }
 }

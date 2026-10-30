@@ -77,7 +77,7 @@ data class HomeUiState(
     val settings: Settings,
 )
 
-enum class SystemAction { ASSIST, SEARCH, INPUTS, PROFILE }
+enum class SystemAction { ASSIST, INPUTS, PROFILE }
 
 private val AllAppsTile = AppTile("", "All apps", null, null, Color(0x1FFFFFFF))
 

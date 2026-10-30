@@ -126,11 +126,12 @@ class MainActivity : ComponentActivity() {
                             }
                             WelcomeScreen(settings.name, accent, settings)
                         }
-                        Screen.AllApps -> {
+                        is Screen.AllApps -> {
                             val homeState by homeViewModel.state.collectAsStateWithLifecycle()
                             val allApps by container.apps.apps.collectAsStateWithLifecycle()
                             AllAppsScreen(
                                 apps = allApps,
+                                focusSearch = (s as Screen.AllApps).focusSearch,
                                 settings = homeState.settings,
                                 accent = homeState.accent,
                                 onLaunch = launch,
@@ -207,7 +208,8 @@ class MainActivity : ComponentActivity() {
                             BackHandler { }
                             HomeScreen(
                                 state = homeState,
-                                onOpenAllApps = { screen = Screen.AllApps },
+                                onOpenAllApps = { screen = Screen.AllApps() },
+                                onOpenAllAppsSearch = { screen = Screen.AllApps(focusSearch = true) },
                                 onOpenSettings = { cameFromBackground = false; openDraft(settings); screen = Screen.Settings },
                                 onLaunch = launch,
                                 showInputs = showInputs,

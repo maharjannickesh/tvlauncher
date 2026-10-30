@@ -9,7 +9,7 @@ class HomeKeyTest {
     @Test fun homeOnHome_isNoop() { assertNull(HomeKey.next(Screen.Home)) }
     @Test fun welcomeIgnoresHome() { assertNull(HomeKey.next(Screen.Welcome)) }
     @Test fun subScreensReturnHome() {
-        assertEquals(Screen.Home, HomeKey.next(Screen.AllApps))
+        assertEquals(Screen.Home, HomeKey.next(Screen.AllApps()))
         assertEquals(Screen.Home, HomeKey.next(Screen.Settings))
         assertEquals(Screen.Home, HomeKey.next(Screen.Background))
     }
