@@ -60,8 +60,15 @@ class ScreensaverService : DreamService(), LifecycleOwner, SavedStateRegistryOwn
             setViewTreeViewModelStoreOwner(this@ScreensaverService)
             setContent {
                 val settings by container.settings.settings.collectAsState(null)
-                val weather by produceState<WeatherUi?>(null) {
-                    value = container.weatherCache.read()?.let { container.weather.toUi(it, LocalDate.now()) }
+                val zoneId = settings?.homeZone
+                val weather by produceState<WeatherUi?>(null, zoneId) {
+                    // Re-read the cache every 30 min while dreaming (the Home loop refreshes it).
+                    while (true) {
+                        value = zoneId?.let { z ->
+                            container.weatherCache.read()?.let { container.weather.toUi(it, LocalDate.now(ZoneId.of(z))) }
+                        }
+                        delay(30 * 60_000L)
+                    }
                 }
                 var nowMs by remember { mutableStateOf(System.currentTimeMillis()) }
                 LaunchedEffect(Unit) {

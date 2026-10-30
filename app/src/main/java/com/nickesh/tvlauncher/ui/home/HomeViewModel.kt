@@ -22,7 +22,12 @@ import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.withTimeoutOrNull
+import com.nickesh.tvlauncher.data.weather.WeatherFreshness
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -92,6 +97,8 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
     /** Latest weather for the configured city, or null until the first load succeeds (also read by the screensaver). */
     val weather = MutableStateFlow<WeatherUi?>(null)
 
+    private val refresh = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
     init {
         viewModelScope.launch(Dispatchers.IO) {
             container.settings.settings
@@ -101,17 +108,23 @@ class HomeViewModel(container: AppContainer) : ViewModel() {
                     while (true) {
                         var ok = false
                         try {
-                            val ui = weatherRepo.load(city, unit, zone)
-                                ?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
+                            val snap = weatherRepo.load(city, unit, zone)
+                            val ui = snap?.let { weatherRepo.toUi(it, LocalDate.now(ZoneId.of(zone))) }
                             weather.value = ui
-                            ok = ui != null
+                            ok = ui != null && WeatherFreshness.isFresh(snap, city, unit, System.currentTimeMillis())
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
                         }
-                        delay(if (ok) 30.minutes else 90.seconds)
+                        // Sleep until the next try, or until refreshNow() wakes us early.
+                        withTimeoutOrNull(if (ok) 30.minutes else 90.seconds) { refresh.first() }
                     }
                 }
         }
+    }
+
+    /** Wakes the weather loop now (activity start / return from standby); the repository's 30 min cache dedupes fresh data. */
+    fun refreshNow() {
+        refresh.tryEmit(Unit)
     }
 
     init {

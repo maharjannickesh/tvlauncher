@@ -111,4 +111,34 @@ class WeatherRepositoryTest {
             assertNull("n=$n", repo.toUi(WeatherSnapshot("Columbus", TempUnit.F, short, now), LocalDate.of(2026, 10, 29)))
         }
     }
+
+    @Test fun toUi_homeDateDay1_slicesFromThere() {
+        val repo = WeatherRepository(FakeApi(), MemoryCache()) { now }
+        val d = sampleForecast().daily
+        val ui = repo.toUi(snap(at = now), LocalDate.of(2026, 10, 30))
+        // only 3 days follow day 1 in the sample, so extend it to 6 days
+        assertNull(ui)
+        val f = sampleForecast().copy(daily = Forecast.Daily(
+            d.time + "2026-11-03", d.weather_code + 0, d.temperature_2m_max + 50.0, d.temperature_2m_min + 38.0))
+        val ui2 = repo.toUi(WeatherSnapshot("Columbus", TempUnit.F, f, now), LocalDate.of(2026, 10, 30))!!
+        assertEquals("60°", ui2.hi)
+        assertEquals("45°", ui2.lo)
+        assertEquals(listOf("Sat", "Sun", "Mon", "Tue"), ui2.forecast.map { it.day })
+        assertEquals("50°", ui2.forecast[3].hi)
+    }
+
+    @Test fun toUi_homeDateMissing_returnsNull() {
+        val repo = WeatherRepository(FakeApi(), MemoryCache()) { now }
+        assertNull(repo.toUi(snap(at = now), LocalDate.of(2026, 10, 28)))
+        assertNull(repo.toUi(snap(at = now), LocalDate.of(2026, 12, 1)))
+    }
+
+    @Test fun staleCache_isNotFresh_soRetryIsShort() {
+        val stale = snap(at = now - 120 * min)
+        assertEquals(false, WeatherFreshness.isFresh(stale, "Columbus", TempUnit.F, now))
+        assertEquals(true, WeatherFreshness.isFresh(snap(at = now - 29 * min), "Columbus", TempUnit.F, now))
+        assertEquals(false, WeatherFreshness.isFresh(snap(at = now - 1 * min), "Denver", TempUnit.F, now))
+        assertEquals(false, WeatherFreshness.isFresh(snap(at = now - 1 * min), "Columbus", TempUnit.C, now))
+        assertEquals(false, WeatherFreshness.isFresh(null, "Columbus", TempUnit.F, now))
+    }
 }

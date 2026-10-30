@@ -70,6 +70,14 @@ class MainActivity : ComponentActivity() {
             }
             var cameFromBackground by rememberSaveable { mutableStateOf(false) }
             val homeViewModel = viewModel { HomeViewModel(container) }
+            val lifecycleOwner = androidx.compose.ui.platform.LocalLifecycleOwner.current
+            androidx.compose.runtime.DisposableEffect(lifecycleOwner, homeViewModel) {
+                val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+                    if (e == androidx.lifecycle.Lifecycle.Event.ON_START) homeViewModel.refreshNow()
+                }
+                lifecycleOwner.lifecycle.addObserver(obs)
+                onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
+            }
             val showInputs = remember { container.systemIntents.isAvailable(SystemAction.INPUTS) }
             val launch = { tile: AppTile ->
                 if (!container.apps.launch(tile.packageName)) {

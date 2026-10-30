@@ -58,7 +58,7 @@ class OpenMeteoClient(private val http: OkHttpClient, private val json: Json) : 
                 "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
                     "&current=temperature_2m,weather_code" +
                     "&daily=weather_code,temperature_2m_max,temperature_2m_min" +
-                    "&temperature_unit=$u&timezone=${enc(zone)}&forecast_days=5",
+                    "&temperature_unit=$u&timezone=${enc(zone)}&forecast_days=7",
             ),
         )
     }

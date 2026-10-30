@@ -68,7 +68,7 @@ class WeatherRepository(
             null
         }
         val now = clock()
-        if (cached != null && cached.city == city && cached.unit == unit && now - cached.fetchedAtEpochMs < TTL_MS) {
+        if (cached != null && cached.city == city && cached.unit == unit && now - cached.fetchedAtEpochMs < WeatherFreshness.TTL_MS) {
             return cached
         }
         return try {
@@ -82,15 +82,16 @@ class WeatherRepository(
         }
     }
 
-    /** Null when the forecast lacks today or any of the next four days. Day names come from the forecast's own dates (already in the requested zone), so [homeDate] is not needed in v1. */
-    @Suppress("UNUSED_PARAMETER")
+    /** Null when [homeDate] is not in the forecast or it lacks that day or the next four. Index 0 of the result is [homeDate]; day names come from the forecast's own dates. */
     fun toUi(s: WeatherSnapshot, homeDate: LocalDate): WeatherUi? {
         val f = s.forecast
         val d = f.daily
-        val hi = d.temperature_2m_max.getOrNull(0) ?: return null
-        val lo = d.temperature_2m_min.getOrNull(0) ?: return null
+        val base = d.time.indexOf(homeDate.toString())
+        if (base < 0) return null
+        val hi = d.temperature_2m_max.getOrNull(base) ?: return null
+        val lo = d.temperature_2m_min.getOrNull(base) ?: return null
         fun t(v: Double) = "${v.roundToInt()}°"
-        val days = (1..4).mapNotNull { i ->
+        val days = (base + 1..base + 4).mapNotNull { i ->
             val date = d.time.getOrNull(i)?.let { runCatching { LocalDate.parse(it) }.getOrNull() }
             val code = d.weather_code.getOrNull(i)
             val dayHi = d.temperature_2m_max.getOrNull(i)
@@ -111,7 +112,14 @@ class WeatherRepository(
     }
 
     private companion object {
-        const val TTL_MS = 30 * 60_000L
         val DAY: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE", Locale.US)
     }
+}
+
+/** Decides whether a loaded snapshot counts as a success (next refresh in 30 min) or needs the 90 s retry. */
+object WeatherFreshness {
+    const val TTL_MS = 30 * 60_000L
+
+    fun isFresh(s: WeatherSnapshot?, city: String, unit: TempUnit, nowMs: Long): Boolean =
+        s != null && s.city == city && s.unit == unit && nowMs - s.fetchedAtEpochMs < WeatherFreshness.TTL_MS
 }
