@@ -3,6 +3,7 @@ package com.nickesh.tvlauncher.ui.home
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -68,16 +69,18 @@ fun ContinueWatchingRow(
     right: FocusRequester = FocusRequester.Default,
     down: FocusRequester = FocusRequester.Default,
 ) {
-    val firstTile = remember { FocusRequester() }
-    // The allow tile held focus when the permission dialog opened; once tiles replace it, focus goes to the first one
-    // instead of wherever Compose falls back to.
-    var allowHadFocus by remember { mutableStateOf(false) }
-    val currentState by rememberUpdatedState(state)
-    LaunchedEffect(state) {
-        // Granting passes through LOADING/EMPTY before OK, so the flag survives those and clears on OK or DISMISSED.
-        if (state == WatchingState.OK && allowHadFocus) runCatching { firstTile.requestFocus() }
-        if (state == WatchingState.OK || state == WatchingState.DISMISSED) allowHadFocus = false
+    // The row's one current focus stop: the first tile (OK), the allow tile, the off line (DISMISSED) or the anchor
+    // (LOADING / EMPTY). While the row holds focus, every content change hands focus to the new stop, so focus never
+    // falls out of the row (to the weather card, whose Select opens Settings) when the focused element leaves.
+    val stop = remember { FocusRequester() }
+    val content = state to tiles.map { it.id }
+    val currentContent by rememberUpdatedState(content)
+    var rowHadFocus by remember { mutableStateOf(false) }
+    var focusedContent by remember { mutableStateOf<Pair<WatchingState, List<Long>>?>(null) }
+    LaunchedEffect(content) {
+        if (rowHadFocus) runCatching { stop.requestFocus() }
     }
+    val stopProps = Modifier.focusProperties { this.down = down; this.right = right }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dpx())) {
         Text(
             "CONTINUE WATCHING",
@@ -87,31 +90,36 @@ fun ContinueWatchingRow(
             fontSize = 22.spx(),
             letterSpacing = 1.spx(),
         )
-        Box(Modifier.fillMaxWidth().height(TILE_H.dpx())) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(TILE_H.dpx())
+                .onFocusChanged {
+                    if (it.hasFocus) {
+                        rowHadFocus = true
+                        focusedContent = currentContent
+                    } else if (focusedContent == currentContent) {
+                        // Lost focus with the content unchanged: the user moved away. A loss caused by the focused
+                        // element leaving (content changed in the same frame) keeps the flag for the effect above.
+                        rowHadFocus = false
+                    }
+                },
+        ) {
             when (state) {
                 WatchingState.OK -> Row(horizontalArrangement = Arrangement.spacedBy(TILE_GAP.dpx())) {
                     tiles.forEachIndexed { i, t ->
                         WatchTileCard(
                             t,
                             onClick = { onResume(t) },
-                            modifier = (if (i == 0) Modifier.focusRequester(firstTile) else Modifier).focusProperties {
+                            modifier = (if (i == 0) Modifier.focusRequester(stop) else Modifier).focusProperties {
                                 this.down = down
                                 if (i == tiles.lastIndex) this.right = right
                             },
                         )
                     }
                 }
-                WatchingState.NEEDS_PERMISSION -> AllowTile(
-                    onAllow,
-                    Modifier
-                        .onFocusChanged {
-                            // A focus loss caused by the tile leaving (permission granted) must not clear the flag.
-                            if (it.isFocused) allowHadFocus = true
-                            else if (currentState == WatchingState.NEEDS_PERMISSION) allowHadFocus = false
-                        }
-                        .focusProperties { this.down = down; this.right = right },
-                )
-                WatchingState.DISMISSED -> OffLine(onOpenSettings, Modifier.align(Alignment.CenterStart).focusProperties { this.down = down; this.right = right })
+                WatchingState.NEEDS_PERMISSION -> AllowTile(onAllow, Modifier.focusRequester(stop).then(stopProps))
+                WatchingState.DISMISSED -> OffLine(onOpenSettings, Modifier.align(Alignment.CenterStart).focusRequester(stop).then(stopProps))
                 WatchingState.EMPTY -> {
                     PlaceholderTiles()
                     Text(
@@ -122,8 +130,12 @@ fun ContinueWatchingRow(
                         fontWeight = FontWeight.W400,
                         fontSize = 20.spx(),
                     )
+                    Anchor(Modifier.focusRequester(stop).then(stopProps))
                 }
-                WatchingState.LOADING -> PlaceholderTiles() // empty frames, no copy
+                WatchingState.LOADING -> {
+                    PlaceholderTiles() // empty frames, no copy
+                    Anchor(Modifier.focusRequester(stop).then(stopProps))
+                }
             }
         }
     }
@@ -260,6 +272,20 @@ private fun OffLine(onClick: () -> Unit, modifier: Modifier) {
             fontSize = 20.spx(),
         )
     }
+}
+
+/** A focusable, non-clickable stop over the empty row, so focus has somewhere to stay while the row has no tiles. */
+@Composable
+private fun Anchor(modifier: Modifier) {
+    var focused by remember { mutableStateOf(false) }
+    val shape = RoundedCornerShape(20.dpx())
+    Box(
+        modifier
+            .fillMaxSize()
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .then(if (focused) Modifier.border(3.dpx(), Color.White, shape) else Modifier),
+    )
 }
 
 /** Three dimmed empty frames, the row's shape while it loads or has nothing in progress. */

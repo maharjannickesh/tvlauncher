@@ -33,6 +33,7 @@ import com.nickesh.tvlauncher.domain.settings.SettingsDraft
 import com.nickesh.tvlauncher.domain.settings.SettingsDraftRules
 import com.nickesh.tvlauncher.domain.home.HomeKey
 import com.nickesh.tvlauncher.domain.home.HomeKeyState
+import com.nickesh.tvlauncher.data.watchnext.ResumeIntents
 import com.nickesh.tvlauncher.domain.agenda.WatchTile
 import com.nickesh.tvlauncher.ui.home.AgendaViewModel
 import com.nickesh.tvlauncher.ui.allapps.AllAppsScreen
@@ -74,14 +75,15 @@ class MainActivity : ComponentActivity() {
     private fun resume(container: AppContainer, tile: WatchTile) {
         val uri = tile.intentUri
         val started = uri != null && try {
-            val intent = Intent.parseUri(uri, 0).setPackage(tile.packageName).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            startActivity(intent)
+            startActivity(ResumeIntents.sanitize(Intent.parseUri(uri, 0), tile.packageName))
             true
         } catch (_: ActivityNotFoundException) {
             false
         } catch (_: URISyntaxException) {
             false
-        } catch (_: SecurityException) {
+        } catch (_: RuntimeException) {
+            // The URI comes from any app's Watch Next row: a malformed extra (NumberFormatException,
+            // IllegalArgumentException) or a SecurityException must fall back, never crash Home.
             false
         }
         if (!started && !container.apps.launch(tile.packageName)) {

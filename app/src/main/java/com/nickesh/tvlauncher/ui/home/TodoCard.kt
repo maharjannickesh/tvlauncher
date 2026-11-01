@@ -13,9 +13,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,6 +29,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +72,33 @@ fun TodoCard(
     val accent = LocalAccent.current
     val shape = RoundedCornerShape(28.dpx())
     val source = if (status == BlockStatus.OK) "Todoist · $open open" else "Todoist"
-    if (status == BlockStatus.OK && rows.isNotEmpty()) {
+    val showRows = status == BlockStatus.OK && rows.isNotEmpty()
+    // Focus follow-through: when the focused row leaves (ticked and released, or the list switches to the status
+    // card), focus goes to the next row, else the previous one, else the card, never out of the card to Compose's fallback.
+    val ids = if (showRows) rows.map { it.id } else emptyList()
+    val currentIds by rememberUpdatedState(ids)
+    var focusedId by remember { mutableStateOf<String?>(null) }
+    var previousIds by remember { mutableStateOf(ids) }
+    val rowRequesters = remember { mutableMapOf<String, FocusRequester>() }
+    val listState = rememberLazyListState()
+    LaunchedEffect(ids) {
+        val gone = focusedId
+        val before = previousIds
+        previousIds = ids
+        rowRequesters.keys.retainAll(ids.toSet())
+        if (gone == null || gone in ids) return@LaunchedEffect
+        val at = before.indexOf(gone)
+        val target = before.drop(at + 1).firstOrNull { it in ids }
+            ?: before.take(maxOf(at, 0)).lastOrNull { it in ids }
+        if (target == null) {
+            focusedId = null
+            runCatching { entry.requestFocus() } // the card's Surface (no rows left)
+        } else {
+            runCatching { listState.scrollToItem(ids.indexOf(target)) }
+            runCatching { rowRequesters[target]?.requestFocus() }
+        }
+    }
+    if (showRows) {
         Column(
             modifier
                 .clip(shape)
@@ -77,6 +110,7 @@ fun TodoCard(
             AgendaHeader("TO DO", source, Modifier.padding(horizontal = 32.dpx()))
             LazyColumn(
                 Modifier.fillMaxWidth().weight(1f).focusRequester(entry).focusRestorer(),
+                state = listState,
                 // Room for a focused row's border inside the card's clip.
                 contentPadding = PaddingValues(horizontal = 16.dpx(), vertical = 6.dpx()),
                 verticalArrangement = Arrangement.spacedBy(4.dpx()),
@@ -88,10 +122,18 @@ fun TodoCard(
                         pending,
                         accent,
                         onClick = { if (pending) onUndo(r.id) else onTick(r.id) },
-                        modifier = Modifier.focusProperties {
-                            if (i == 0) this.up = up
-                            if (i == rows.lastIndex) this.down = down
-                        },
+                        modifier = Modifier
+                            .focusRequester(rowRequesters.getOrPut(r.id) { FocusRequester() })
+                            .onFocusChanged {
+                                if (it.isFocused) focusedId = r.id
+                                // A loss while the row is still listed is the user moving away; a loss from the row
+                                // leaving keeps the id for the follow-through above.
+                                else if (focusedId == r.id && r.id in currentIds) focusedId = null
+                            }
+                            .focusProperties {
+                                if (i == 0) this.up = up
+                                if (i == rows.lastIndex) this.down = down
+                            },
                     )
                 }
             }
