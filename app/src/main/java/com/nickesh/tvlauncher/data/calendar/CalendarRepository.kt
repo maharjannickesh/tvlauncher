@@ -14,13 +14,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** [names] maps each feed URL to the calendar name its events carry, so a failing feed's old events can be found. */
+/** [byUrl] holds each feed's last good events (a failing feed keeps exactly its own); [events] is the flattened merge consumers read. */
 @Serializable
 data class CalendarCache(
     val events: List<CalendarEvent>,
     val fetchedAtMs: Long,
     val ok: Boolean,
-    val names: Map<String, String> = emptyMap(),
+    val byUrl: Map<String, List<CalendarEvent>> = emptyMap(),
 )
 
 class CalendarRepository(
@@ -40,7 +40,7 @@ class CalendarRepository(
         val now = clock()
         val previous = cached()
         val events = mutableListOf<CalendarEvent>()
-        val names = mutableMapOf<String, String>()
+        val byUrl = mutableMapOf<String, List<CalendarEvent>>()
         var ok = true
         for (url in urls) {
             val host = hostOf(url)
@@ -50,19 +50,19 @@ class CalendarRepository(
                 val name = IcsParser.calendarName(body) ?: host
                 val parsed = IcsParser.parse(body, now - DAY_MS, now + WINDOW_DAYS * DAY_MS, zone, CalendarOwner.emailFromUrl(url), name)
                 events += parsed
-                names[url] = name
+                byUrl[url] = parsed
                 log("$host fetched ${parsed.size}")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 ok = false
-                val name = previous?.names?.get(url) ?: host
-                events += previous?.events.orEmpty().filter { it.calendar == name }
-                names[url] = name
+                val old = previous?.byUrl?.get(url).orEmpty()
+                events += old
+                byUrl[url] = old
                 log("$host failed: ${e.message}")
             }
         }
-        val out = CalendarCache(events, now, ok, names)
+        val out = CalendarCache(events, now, ok, byUrl)
         store.edit { it[key] = json.encodeToString(CalendarCache.serializer(), out) }
         return out
     }
@@ -74,7 +74,7 @@ class CalendarRepository(
             fetcher.get(url)
         } catch (e: CancellationException) {
             throw e
-        } catch (e: IOException) {
+        } catch (e: Exception) {
             log("$host validate failed: ${e.message}")
             return Result.failure(IOException(NOT_A_CALENDAR))
         }
@@ -83,9 +83,16 @@ class CalendarRepository(
             return Result.failure(IOException(NOT_A_CALENDAR))
         }
         val now = clock()
-        val name = IcsParser.calendarName(body) ?: host
-        val count = IcsParser.parse(body, now - DAY_MS, now + WINDOW_DAYS * DAY_MS, ZoneId.systemDefault(), CalendarOwner.emailFromUrl(url), name).size
-        return Result.success(name to count)
+        return try {
+            val name = IcsParser.calendarName(body) ?: host
+            val count = IcsParser.parse(body, now - DAY_MS, now + WINDOW_DAYS * DAY_MS, ZoneId.systemDefault(), CalendarOwner.emailFromUrl(url), name).size
+            Result.success(name to count)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            log("$host validate parse failed")
+            Result.failure(IOException(NOT_A_CALENDAR))
+        }
     }
 
     private fun isCalendar(body: String) = body.contains("BEGIN:VCALENDAR")

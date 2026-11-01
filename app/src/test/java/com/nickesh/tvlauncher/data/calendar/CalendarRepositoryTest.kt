@@ -113,6 +113,26 @@ class CalendarRepositoryTest {
         assertEquals("Work" to 2, repo().validate(urlA).getOrNull())
     }
 
+    @Test fun validate_malformedUrl_failsWithCopy() = runBlocking {
+        val throwing = object : TextFetcher {
+            override suspend fun get(url: String, bearer: String?): String = throw IllegalArgumentException("Expected URL scheme")
+        }
+        val r = CalendarRepository(throwing, store, { now }, { logs += it }).validate("foo bar")
+        assertEquals("That link didn't return a calendar", r.exceptionOrNull()?.message)
+    }
+
+    @Test fun refresh_sameNameFeeds_failingKeepsOnlyItsOwnEvents() = runBlocking {
+        fetcher.bodies[urlA] = ics("Cal", "a1" to now + hour)
+        fetcher.bodies[urlB] = ics("Cal", "b1" to now + 2 * hour)
+        val r = repo()
+        r.refresh(listOf(urlA, urlB), zone)
+        fetcher.failing += urlB
+        fetcher.bodies[urlA] = ics("Cal", "a2" to now + 3 * hour)
+        val out = r.refresh(listOf(urlA, urlB), zone)
+        assertFalse(out.ok)
+        assertEquals(listOf("a2", "b1"), out.events.map { it.uid }.sorted())
+    }
+
     @Test fun validate_unnamedCalendar_usesHost() = runBlocking {
         fetcher.bodies[urlA] = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//t//EN\r\nEND:VCALENDAR\r\n"
         assertEquals("a.example.com" to 0, repo().validate(urlA).getOrNull())
