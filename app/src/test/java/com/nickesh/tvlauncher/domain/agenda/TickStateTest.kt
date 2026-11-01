@@ -1,0 +1,59 @@
+package com.nickesh.tvlauncher.domain.agenda
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class TickStateTest {
+    private fun row(id: String) = TodoRow(id, "t$id", null, false)
+    private val empty = TickState()
+
+    @Test fun tick_addsPending_withFiveSecondDeadline() {
+        val s = TickRules.tick(empty, "a", 1_000L)
+        assertEquals(listOf(Pending("a", 6_000L)), s.pending)
+        assertTrue(TickRules.isPending(s, "a"))
+    }
+
+    @Test fun undo_removesPending() {
+        val s = TickRules.undo(TickRules.tick(empty, "a", 0L), "a")
+        assertEquals(empty, s)
+        assertEquals(empty, TickRules.undo(empty, "zzz"))
+    }
+
+    @Test fun fail_removesPending() {
+        val s = TickRules.fail(TickRules.tick(empty, "a", 0L), "a")
+        assertEquals(empty, s)
+        assertEquals(empty, TickRules.fail(empty, "zzz"))
+    }
+
+    @Test fun expire_movesToHidden_andReportsIds() {
+        var s = TickRules.tick(empty, "a", 0L)
+        s = TickRules.tick(s, "b", 1_000L)
+        s = TickRules.tick(s, "c", 3_000L)
+        val (next, gone) = TickRules.expire(s, 6_000L)
+        assertEquals(listOf("a", "b"), gone)
+        assertEquals(setOf("a", "b"), next.hiddenIds)
+        assertEquals(listOf(Pending("c", 8_000L)), next.pending)
+        assertFalse(TickRules.isPending(next, "a"))
+    }
+
+    @Test fun visible_keepsPending_dropsHidden() {
+        val s = TickState(listOf(Pending("b", 9L)), setOf("c"))
+        val out = TickRules.visible(listOf(row("a"), row("b"), row("c"), row("d")), s)
+        assertEquals(listOf("a", "b", "d"), out.map { it.id })
+    }
+
+    @Test fun openCount_subtractsPendingAndHidden() {
+        val s = TickState(listOf(Pending("b", 9L)), setOf("c"))
+        assertEquals(2, TickRules.openCount(4, s))
+        assertEquals(0, TickRules.openCount(1, s))
+    }
+
+    @Test fun tick_twice_isIdempotent() {
+        val once = TickRules.tick(empty, "a", 0L)
+        assertEquals(once, TickRules.tick(once, "a", 2_000L))
+        val hidden = TickState(hiddenIds = setOf("h"))
+        assertEquals(hidden, TickRules.tick(hidden, "h", 0L))
+    }
+}
