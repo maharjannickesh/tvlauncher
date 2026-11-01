@@ -1,0 +1,428 @@
+<title>TV Launcher Agenda Layouts</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of three 16:9 TV frames, each a faithful half-scale wireframe of the real Home screen, with a short verdict under each. */
+:root {
+  --bg: #f3f5f4; --fg: #15201d; --muted: #5d6b67; --line: #d6dcd9; --accent: #1e7a68; --card: #ffffff;
+  --font-ui: "Outfit", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1413; --fg: #e8eeec; --muted: #93a19c; --line: #26302d; --accent: #5fd0b4; --card: #161d1b; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0f1413; --fg: #e8eeec; --muted: #93a19c; --line: #26302d; --accent: #5fd0b4; --card: #161d1b; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--font-ui); margin: 0;
+  padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 40px; }
+h1 { font-size: 1.6rem; margin: 0 0 6px; text-wrap: balance; font-weight: 600; }
+.sub { color: var(--muted); margin: 0; max-width: 65ch; line-height: 1.5; }
+section { display: grid; gap: 12px; }
+h2 { font-size: 1.1rem; margin: 0; font-weight: 600; }
+h2 .k { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: .9rem; margin-right: 10px; }
+.note { color: var(--muted); margin: 0; line-height: 1.5; max-width: 70ch; }
+.note b { color: var(--fg); font-weight: 600; }
+
+/* The TV frame: everything inside is positioned in percent of a 1280x720 screen, text in container units. */
+.tv { position: relative; width: 100%; max-width: 100%; aspect-ratio: 16 / 9; container-type: inline-size;
+  border-radius: 1.2cqw; overflow: hidden; color: #ecf1ef; font-family: var(--font-ui);
+  background: radial-gradient(120% 90% at 50% 0%, #1b3a38 0%, #10201f 55%, #0b1413 100%); box-shadow: 0 10px 40px rgba(0,0,0,.35); }
+.tv * { box-sizing: border-box; }
+.tv .ridge { position: absolute; left: 0; right: 0; bottom: 18%; height: 34%; background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.08)); clip-path: polygon(0 60%, 18% 30%, 36% 55%, 52% 25%, 70% 50%, 86% 20%, 100% 45%, 100% 100%, 0 100%); }
+.tv .abs { position: absolute; }
+.tv .greet { left: 5%; top: 6.5%; font-size: 1.7cqw; font-weight: 500; }
+.tv .greet span { color: #9fb3ae; font-size: 1.2cqw; margin-left: 1cqw; }
+.tv .pills { right: 5%; top: 5.5%; display: flex; gap: .8cqw; }
+.tv .pill { height: 4.8cqw; border-radius: 2.4cqw; background: rgba(255,255,255,.14); min-width: 4.8cqw; display: grid; place-items: center; font-size: 1.1cqw; padding: 0 1.4cqw; }
+.tv .hero { left: 5.4%; font-weight: 300; line-height: 1; letter-spacing: -.02em; }
+.tv .hero .t { font-size: 13cqw; }
+.tv .hero .d { font-size: 2cqw; color: #c9d6d2; margin-top: 1cqw; }
+.glass { background: rgba(255,255,255,.09); border-radius: 1.6cqw; backdrop-filter: blur(6px); }
+.tv .wx { right: 5%; padding: 1.6cqw 1.8cqw; }
+.tv .wx .big { font-size: 4.2cqw; font-weight: 300; }
+.tv .wx .cond { font-size: 1.3cqw; text-align: right; color: #d7e1de; }
+.tv .wx .days { display: flex; justify-content: space-between; margin-top: 1cqw; padding-top: 1cqw; border-top: 1px solid rgba(255,255,255,.15); font-size: 1cqw; color: #b9c7c3; }
+.tv .clock { padding: 1.3cqw 1.6cqw; }
+.tv .clock .c { font-size: 1.35cqw; font-weight: 500; }
+.tv .clock .t { font-size: 2.8cqw; font-weight: 300; line-height: 1.1; }
+.tv .clock .m { font-size: 1cqw; color: #a9b8b3; }
+.tv .clock .w { position: absolute; right: 1.6cqw; top: 1.3cqw; font-size: 1.2cqw; text-align: right; color: #d7e1de; }
+.tv .apps { left: 5%; right: 5%; bottom: 5%; }
+.tv .apps .l { font-size: 1.4cqw; margin-bottom: .8cqw; }
+.tv .apps .row { display: flex; gap: .8cqw; }
+.tv .apps .a { flex: 1; aspect-ratio: 1.55; border-radius: 1cqw; background: rgba(255,255,255,.22); }
+.tv .apps .a.f { background: #eef3f1; outline: .3cqw solid #fff; outline-offset: .2cqw; }
+
+/* Agenda cards shared between options */
+.card { padding: 1.3cqw 1.6cqw; display: flex; flex-direction: column; gap: .7cqw; }
+.card .h { font-size: 1.25cqw; font-weight: 500; letter-spacing: .02em; color: #d7e1de; display: flex; justify-content: space-between; }
+.card .h i { font-style: normal; color: #9fb3ae; font-weight: 400; }
+.ev { display: grid; grid-template-columns: 6cqw 1fr; gap: .6cqw; font-size: 1.25cqw; align-items: baseline; }
+.ev .tm { color: #7fe0c3; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ev .tt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ev .tt small { color: #9fb3ae; font-size: 1cqw; margin-left: .6cqw; }
+.tk { display: flex; align-items: center; gap: .9cqw; font-size: 1.25cqw; padding: .35cqw .6cqw; border-radius: .8cqw; margin: 0 -.6cqw; }
+.tk .bx { width: 1.6cqw; height: 1.6cqw; border-radius: 50%; border: .18cqw solid #b9c7c3; flex: none; display: grid; place-items: center; font-size: 1cqw; }
+.tk.f { background: rgba(255,255,255,.16); outline: .22cqw solid #fff; }
+.tk.done { color: #8ea09b; text-decoration: line-through; }
+.tk.done .bx { background: #5fd0b4; border-color: #5fd0b4; color: #0b1413; }
+.tk .due { margin-left: auto; color: #9fb3ae; font-size: 1cqw; }
+.hint { font-size: .95cqw; color: #8ea09b; margin-top: auto; }
+.strip { display: flex; gap: .8cqw; }
+.strip .sc { flex: 1; padding: .9cqw 1.2cqw; display: flex; justify-content: space-between; align-items: baseline; }
+.strip .sc b { font-weight: 500; font-size: 1.2cqw; }
+.strip .sc span { font-size: 1.8cqw; font-weight: 300; }
+.strip .sc small { font-size: .95cqw; color: #a9b8b3; }
+
+
+/* Continue watching row */
+.cw { display: flex; gap: 1cqw; }
+.cw .p { flex: 1; position: relative; aspect-ratio: 16/9; border-radius: 1cqw; overflow: hidden; background: linear-gradient(135deg, #3a2f2a, #1b1715); }
+.cw .p.f { outline: .3cqw solid #fff; outline-offset: .2cqw; }
+.cw .p .lb { position: absolute; left: 0; right: 0; bottom: 0; padding: .8cqw 1cqw .9cqw; background: linear-gradient(180deg, transparent, rgba(0,0,0,.85)); }
+.cw .p .lb b { display: block; font-size: 1.25cqw; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cw .p .lb small { font-size: .95cqw; color: #c9d6d2; }
+.cw .p .bar { position: absolute; left: 0; bottom: 0; height: .4cqw; background: #5fd0b4; }
+.cw .p .app { position: absolute; top: .7cqw; left: .8cqw; font-size: .85cqw; padding: .2cqw .6cqw; border-radius: .5cqw; background: rgba(0,0,0,.55); color: #d7e1de; }
+.cwl { font-size: 1.25cqw; font-weight: 500; letter-spacing: .02em; color: #d7e1de; margin-bottom: .6cqw; }
+
+.verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 24px; margin: 0; padding: 0; list-style: none; }
+.verdict li { padding-left: 18px; position: relative; line-height: 1.45; }
+.verdict li::before { content: ""; position: absolute; left: 0; top: .55em; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.verdict li.m::before { background: #c9a227; }
+@media (max-width: 640px) { .verdict { grid-template-columns: 1fr; } body { padding-block: 20px 40px; } }
+</style>
+
+<main>
+  <header>
+    <h1>Agenda column on Home</h1>
+    <p class="sub">Option G is the latest: E with the weather and world clock cards keeping today's content, and Continue watching under the world clocks. F, E and D are kept below it; the three earlier ways to fit the two new blocks, "Up next" (your next three calendar events) and "To do" (open Todoist tasks, Select ticks one off), onto the current 1280×720 Home without losing the hero clock, weather, world clocks or apps row. Each frame is drawn to the real proportions.</p>
+  </header>
+
+  <!-- OPTION G: E, with the clocks and weather kept as today and Continue watching under the world clocks -->
+  <section>
+    <h2><span class="k">G</span>E, but the weather and clock cards keep today's content, and Continue watching sits under the world clocks</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:13%"><div class="t" style="font-size:11cqw">14:44</div><div class="d" style="font-size:1.8cqw; margin-top:.4cqw">Friday, October 30</div></div>
+      <!-- weather beside the clock, content identical to the live card -->
+      <div class="abs glass wx" style="left:36%; right:auto; top:13%; width:26.5%; padding:1.3cqw 1.5cqw">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big" style="font-size:3.9cqw">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°<br><span style="font-size:1cqw;color:#9fb3ae">Columbus</span></div></div>
+        <div class="days"><span style="display:flex; flex-direction:column; gap:.3cqw; min-width:4.6cqw"><span style="display:flex; justify-content:space-between"><span>Sat</span><span>☁</span></span><span><b style="color:#ecf1ef">63°</b> 47°</span></span><span style="display:flex; flex-direction:column; gap:.3cqw; min-width:4.6cqw"><span style="display:flex; justify-content:space-between"><span>Sun</span><span>☂</span></span><span><b style="color:#ecf1ef">69°</b> 53°</span></span><span style="display:flex; flex-direction:column; gap:.3cqw; min-width:4.6cqw"><span style="display:flex; justify-content:space-between"><span>Mon</span><span>☂</span></span><span><b style="color:#ecf1ef">57°</b> 53°</span></span><span style="display:flex; flex-direction:column; gap:.3cqw; min-width:4.6cqw"><span style="display:flex; justify-content:space-between"><span>Tue</span><span>☂</span></span><span><b style="color:#ecf1ef">64°</b> 56°</span></span></div>
+      </div>
+      <!-- three world clock cards, today's look, in the width of two -->
+      <div class="abs glass clock" style="left:5%; top:40%; width:18.3%; padding:1cqw 1.3cqw"><div class="c">Kathmandu</div><div class="t" style="font-size:2.4cqw">00:29</div><div class="m">Tomorrow · +9h 45m</div><div class="w" style="font-size:1.1cqw">☂<br>60°</div></div>
+      <div class="abs glass clock" style="left:24.6%; top:40%; width:18.3%; padding:1cqw 1.3cqw"><div class="c">Abu Dhabi</div><div class="t" style="font-size:2.4cqw">22:44</div><div class="m">Today · +8h</div><div class="w" style="font-size:1.1cqw">☾<br>86°</div></div>
+      <div class="abs glass clock" style="left:44.2%; top:40%; width:18.3%; padding:1cqw 1.3cqw"><div class="c">Tokyo</div><div class="t" style="font-size:2.4cqw">03:44</div><div class="m">Tomorrow · +13h</div><div class="w" style="font-size:1.1cqw">☾<br>55°</div></div>
+      <!-- continue watching under the world clocks -->
+      <div class="abs" style="left:5%; top:56.5%; width:57.5%">
+        <div class="cwl">CONTINUE WATCHING</div>
+        <div class="cw">
+          <div class="p f" style="background:linear-gradient(135deg,#5a3d2e,#2a1c14)"><span class="app">Prime Video</span><div class="lb"><b>Friends</b><small>S3 E22 · 9 min left</small></div><div class="bar" style="width:62%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#2e3d5a,#141c2a)"><span class="app">Prime Video</span><div class="lb"><b>Mirzapur: The Movie</b><small>1h 56m left</small></div><div class="bar" style="width:45%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#3d5a2e,#1c2a14)"><span class="app">Prime Video</span><div class="lb"><b>56 Days</b><small>S1 E7 · 36 min left</small></div><div class="bar" style="width:32%"></div></div>
+        </div>
+      </div>
+      <!-- right column, as in E -->
+      <div class="abs glass card" style="right:5%; top:13%; width:30.5%; height:29%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:44%; width:30.5%; height:33.5%">
+        <div class="h">TO DO <i>Todoist · 5 open</i></div>
+        <div class="tk"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+        <div class="tk"><span class="bx"></span>Call the plumber<span class="due">Mon</span></div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <div class="abs apps" style="bottom:2%"><div class="l" style="margin-bottom:.4cqw">Your apps</div><div class="row"><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div><div class="a" style="aspect-ratio:2.1"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Weather card beside the hero clock with today's exact content: condition, high and low, city, and the four-day row with icons and both temperatures.</li>
+      <li>World clock cards keep today's look (city, time, "Tomorrow · +9h 45m", weather icon and temperature), three in the width of two.</li>
+      <li>Continue watching sits under the world clocks; the right column is unchanged from E.</li>
+      <li class="m">The hero clock digits and the app tiles each give up a little height to fit the extra row.</li>
+    </ul>
+  </section>
+
+  <!-- OPTION F: weather untouched, agenda column starts under it -->
+  <section>
+    <h2><span class="k">F</span>Weather exactly as today; clock → Continue watching → world clocks; Up next and To do under the weather</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:13%"><div class="t" style="font-size:11.5cqw">14:44</div><div class="d" style="font-size:1.8cqw; margin-top:.4cqw">Friday, October 30</div></div>
+      <!-- weather: same place, same size, same content as the live app -->
+      <div class="abs glass wx" style="top:14%; width:29%">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°<br><span style="font-size:1cqw;color:#9fb3ae">Columbus</span></div></div>
+        <div class="days"><span>Sat ☁ 63° 47°</span><span>Sun ☂ 69° 53°</span><span>Mon ☂ 57° 53°</span><span>Tue ☂ 64° 56°</span></div>
+      </div>
+      <!-- continue watching under the hero clock -->
+      <div class="abs" style="left:5%; top:39%; width:60.5%">
+        <div class="cwl">CONTINUE WATCHING</div>
+        <div class="cw">
+          <div class="p f" style="background:linear-gradient(135deg,#5a3d2e,#2a1c14)"><span class="app">Prime Video</span><div class="lb"><b>Friends</b><small>S3 E22 · 9 min left</small></div><div class="bar" style="width:62%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#2e3d5a,#141c2a)"><span class="app">Prime Video</span><div class="lb"><b>Mirzapur: The Movie</b><small>1h 56m left</small></div><div class="bar" style="width:45%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#3d5a2e,#1c2a14)"><span class="app">Prime Video</span><div class="lb"><b>56 Days</b><small>S1 E7 · 36 min left</small></div><div class="bar" style="width:32%"></div></div>
+        </div>
+      </div>
+      <!-- world clocks next, as a one-line strip -->
+      <div class="abs strip" style="left:5%; top:65%; width:60.5%">
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Kathmandu</b><br><small>Tomorrow · +9h 45m</small></div><span>00:29 <small>☂ 60°</small></span></div>
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Abu Dhabi</b><br><small>Today · +8h</small></div><span>22:44 <small>☾ 86°</small></span></div>
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Tokyo</b><br><small>Tomorrow · +13h</small></div><span>03:44 <small>☾ 55°</small></span></div>
+      </div>
+      <!-- right column starts under the weather card -->
+      <div class="abs glass card" style="right:5%; top:47%; width:29%; height:14.5%; gap:.45cqw">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:63%; width:29%; height:16%; gap:.3cqw">
+        <div class="h">TO DO <i>Todoist · 5 open</i></div>
+        <div class="tk"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+      </div>
+      <div class="abs apps" style="bottom:2.5%"><div class="l" style="margin-bottom:.4cqw">Your apps</div><div class="row"><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Top row identical to the live app: hero clock left, the weather card untouched on the right with its city and four-day forecast.</li>
+      <li>Left column reads top to bottom: clock, Continue watching, world clocks. Right column: weather, Up next, To do.</li>
+      <li class="m">Up next and To do share the space under the weather card, so To do shows three tasks at a time (it scrolls as you move down; the count in the header tells you the rest).</li>
+      <li class="m">World clocks are a one-line strip and app tiles are shorter, as in E.</li>
+    </ul>
+  </section>
+
+  <!-- OPTION E: D + continue watching -->
+  <section>
+    <h2><span class="k">E</span>Layout D plus "Continue watching" under the hero clock</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:13%"><div class="t" style="font-size:11.5cqw">14:44</div><div class="d" style="font-size:1.8cqw; margin-top:.4cqw">Friday, October 30</div></div>
+      <div class="abs glass wx" style="left:37.5%; right:auto; top:13%; width:25%; padding:1.2cqw 1.5cqw">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big" style="font-size:3.8cqw">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°</div></div>
+        <div class="days"><span>Sat 63°</span><span>Sun 69°</span><span>Mon 57°</span><span>Tue 64°</span></div>
+      </div>
+      <!-- continue watching: three 16:9 posters across the left two-thirds -->
+      <div class="abs" style="left:5%; top:39%; width:57.5%">
+        <div class="cwl">CONTINUE WATCHING</div>
+        <div class="cw">
+          <div class="p f" style="background:linear-gradient(135deg,#5a3d2e,#2a1c14)"><span class="app">Prime Video</span><div class="lb"><b>Friends</b><small>S3 E22 · 9 min left</small></div><div class="bar" style="width:62%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#2e3d5a,#141c2a)"><span class="app">Prime Video</span><div class="lb"><b>Mirzapur: The Movie</b><small>1h 56m left</small></div><div class="bar" style="width:45%"></div></div>
+          <div class="p" style="background:linear-gradient(135deg,#3d5a2e,#1c2a14)"><span class="app">Prime Video</span><div class="lb"><b>56 Days</b><small>S1 E7 · 36 min left</small></div><div class="bar" style="width:32%"></div></div>
+        </div>
+      </div>
+      <!-- world clocks as a one-line strip -->
+      <div class="abs strip" style="left:5%; top:64%; width:57.5%">
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Kathmandu</b><br><small>Tomorrow · +9h 45m</small></div><span>00:29 <small>☂ 60°</small></span></div>
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Abu Dhabi</b><br><small>Today · +8h</small></div><span>22:44 <small>☾ 86°</small></span></div>
+        <div class="glass sc" style="padding:.8cqw 1.1cqw"><div><b>Tokyo</b><br><small>Tomorrow · +13h</small></div><span>03:44 <small>☾ 55°</small></span></div>
+      </div>
+      <!-- right column -->
+      <div class="abs glass card" style="right:5%; top:13%; width:30.5%; height:29%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:44%; width:30.5%; height:33%">
+        <div class="h">TO DO <i>Todoist · 5 open</i></div>
+        <div class="tk"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+        <div class="tk"><span class="bx"></span>Call the plumber<span class="due">Mon</span></div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <div class="abs apps" style="bottom:2.5%"><div class="l" style="margin-bottom:.4cqw">Your apps</div><div class="row"><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div><div class="a" style="aspect-ratio:2"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Three 16:9 posters straight from the apps' own artwork, with show, episode, time left and a progress bar; Select resumes playback in that app.</li>
+      <li>Right column unchanged from D. Hero clock shrinks a touch; weather keeps its forecast row.</li>
+      <li class="m">World clocks become a one-line strip (city, offset, time, weather) to make the vertical room.</li>
+      <li class="m">App tiles get shorter. On your TV today only Prime Video fills this row; Netflix and YouTube publish nothing here.</li>
+    </ul>
+  </section>
+
+  <!-- OPTION D (your suggestion) -->
+  <section>
+    <h2><span class="k">D</span>Your layout without the watching row: weather beside the clock, three clocks in the width of two, agenda column on the right</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:16%"><div class="t">14:44</div><div class="d">Friday, October 30</div></div>
+      <!-- weather right next to the hero clock -->
+      <div class="abs glass wx" style="left:37.5%; right:auto; top:14%; width:25%; padding:1.4cqw 1.5cqw">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°</div></div>
+        <div class="days"><span>Sat 63°</span><span>Sun 69°</span><span>Mon 57°</span><span>Tue 64°</span></div>
+      </div>
+      <!-- three clocks in the width of two -->
+      <div class="abs glass clock" style="left:5%; top:44%; width:18.3%; padding:1.1cqw 1.3cqw"><div class="c">Kathmandu</div><div class="t" style="font-size:2.5cqw">00:29</div><div class="m">Tomorrow · +9h 45m</div><div class="w" style="font-size:1.1cqw">☂<br>60°</div></div>
+      <div class="abs glass clock" style="left:24.6%; top:44%; width:18.3%; padding:1.1cqw 1.3cqw"><div class="c">Abu Dhabi</div><div class="t" style="font-size:2.5cqw">22:44</div><div class="m">Today · +8h</div><div class="w" style="font-size:1.1cqw">☾<br>86°</div></div>
+      <div class="abs glass clock" style="left:44.2%; top:44%; width:18.3%; padding:1.1cqw 1.3cqw"><div class="c">Tokyo</div><div class="t" style="font-size:2.5cqw">03:44</div><div class="m">Tomorrow · +13h</div><div class="w" style="font-size:1.1cqw">☾<br>55°</div></div>
+      <!-- right column: calendar over tasks, full height from the top row to the apps row -->
+      <div class="abs glass card" style="right:5%; top:14%; width:30.5%; height:28%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:44%; width:30.5%; height:34%">
+        <div class="h">TO DO <i>Todoist · 5 open</i></div>
+        <div class="tk f"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+        <div class="tk"><span class="bx"></span>Call the plumber<span class="due">Mon</span></div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <div class="abs apps" style="bottom:3.5%"><div class="l">Your apps</div><div class="row"><div class="a f"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Weather keeps its forecast row; it moves left to sit beside the hero clock, which gives up a little of its empty right margin.</li>
+      <li>The right third becomes one tall agenda column: three events on top, five tasks below, nothing else shrinks much.</li>
+      <li class="m">World clocks go from 29% to 18% of the width each: smaller time digits, the same city, offset and weather lines.</li>
+      <li class="m">Remote path: Right from the weather card lands on Up next; Right from Tokyo lands on To do.</li>
+    </ul>
+  </section>
+
+  <details>
+    <summary style="cursor:pointer; color:var(--muted); margin-bottom:16px">Earlier options A, B and C</summary>
+    <div style="display:grid; gap:40px">
+  <!-- OPTION A -->
+  <section>
+    <h2><span class="k">A</span>New row under the world clocks</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:16%"><div class="t">14:44</div><div class="d">Friday, October 30</div></div>
+      <div class="abs glass wx" style="top:14%; width:29%">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°</div></div>
+        <div class="days"><span>Sat 63°</span><span>Sun 69°</span><span>Mon 57°</span><span>Tue 64°</span></div>
+      </div>
+      <!-- world clocks: shorter -->
+      <div class="abs glass clock" style="left:5%; top:44%; width:28.6%"><div class="c">Kathmandu</div><div class="t">00:29</div><div class="m">Tomorrow · +9h 45m</div><div class="w">☂<br>60°</div></div>
+      <div class="abs glass clock" style="left:35.7%; top:44%; width:28.6%"><div class="c">Abu Dhabi</div><div class="t">22:44</div><div class="m">Today · +8h</div><div class="w">☾<br>86°</div></div>
+      <div class="abs glass clock" style="left:66.4%; top:44%; width:28.6%"><div class="c">Tokyo</div><div class="t">03:44</div><div class="m">Tomorrow · +13h</div><div class="w">☾<br>55°</div></div>
+      <!-- agenda row -->
+      <div class="abs glass card" style="left:5%; top:61%; width:44.2%; height:21%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="left:50.8%; top:61%; width:44.2%; height:21%">
+        <div class="h">TO DO <i>Todoist · 4 open</i></div>
+        <div class="tk f"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <div class="abs apps" style="bottom:3.5%"><div class="l">Your apps</div><div class="row"><div class="a f"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Nothing moves or shrinks except the vertical gaps: hero clock, weather and clocks stay where you know them.</li>
+      <li>Both blocks are wide, so event titles and task names rarely truncate.</li>
+      <li class="m">Only three lines fit per block, and the apps row loses its breathing room above it.</li>
+      <li class="m">Four rows to walk through with the remote before you reach the apps.</li>
+    </ul>
+  </section>
+
+  <!-- OPTION B -->
+  <section>
+    <h2><span class="k">B</span>Right column: weather, then agenda, stacked</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:18%"><div class="t">14:44</div><div class="d">Friday, October 30</div></div>
+      <!-- world clocks as a strip under the hero, left half -->
+      <div class="abs strip" style="left:5%; top:50%; width:48%">
+        <div class="glass sc"><div><b>Kathmandu</b><br><small>+9h 45m</small></div><span>00:29</span></div>
+        <div class="glass sc"><div><b>Abu Dhabi</b><br><small>+8h</small></div><span>22:44</span></div>
+        <div class="glass sc"><div><b>Tokyo</b><br><small>+13h</small></div><span>03:44</span></div>
+      </div>
+      <!-- right column -->
+      <div class="abs glass wx" style="top:14%; width:40%; padding:1.2cqw 1.6cqw">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big">☼ 66°</div><div class="cond">Clear sky · H 67° L 47°<br>Sat 63° · Sun 69° · Mon 57°</div></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:34%; width:40%; height:20%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+      </div>
+      <div class="abs glass card" style="right:5%; top:56%; width:40%; height:24%">
+        <div class="h">TO DO <i>Todoist · 4 open</i></div>
+        <div class="tk f"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <div class="abs apps" style="bottom:3.5%"><div class="l">Your apps</div><div class="row"><div class="a f"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div><div class="a"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Everything you glance at (time, weather, next events, tasks) sits in one tall column; the left half stays calm.</li>
+      <li>Tasks get four or five visible lines, the best of the three.</li>
+      <li class="m">World clocks shrink to a strip: city, offset and time only, no weather icon or "Tomorrow" line.</li>
+      <li class="m">Weather loses its four-day forecast row; it becomes one line.</li>
+    </ul>
+  </section>
+
+  <!-- OPTION C -->
+  <section>
+    <h2><span class="k">C</span>Agenda row takes the clocks' place; clocks become a strip</h2>
+    <div class="tv">
+      <div class="ridge"></div>
+      <div class="abs greet">Good Afternoon, Nickesh <span>⌖ Columbus</span></div>
+      <div class="abs pills"><div class="pill">🎙 Ask Gemini</div><div class="pill">⌕</div><div class="pill">⚙</div><div class="pill">☺</div></div>
+      <div class="abs hero" style="top:16%"><div class="t">14:44</div><div class="d">Friday, October 30</div></div>
+      <div class="abs glass wx" style="top:14%; width:29%">
+        <div style="display:flex; justify-content:space-between; align-items:center"><div class="big">☼ 66°</div><div class="cond">Clear sky<br>H 67° · L 47°</div></div>
+        <div class="days"><span>Sat 63°</span><span>Sun 69°</span><span>Mon 57°</span><span>Tue 64°</span></div>
+      </div>
+      <!-- agenda row in the clocks' old slot, taller -->
+      <div class="abs glass card" style="left:5%; top:45%; width:44.2%; height:27%">
+        <div class="h">UP NEXT <i>Google Calendar</i></div>
+        <div class="ev"><span class="tm">15:30</span><span class="tt">Dentist <small>in 46 min</small></span></div>
+        <div class="ev"><span class="tm">18:00</span><span class="tt">Call with Suman</span></div>
+        <div class="ev"><span class="tm">Sat 10:00</span><span class="tt">Car service · Honda</span></div>
+        <div class="hint">Select opens Google Calendar</div>
+      </div>
+      <div class="abs glass card" style="left:50.8%; top:45%; width:44.2%; height:27%">
+        <div class="h">TO DO <i>Todoist · 4 open</i></div>
+        <div class="tk f"><span class="bx"></span>Pay electricity bill<span class="due">today</span></div>
+        <div class="tk"><span class="bx"></span>Book flights for December<span class="due">Fri</span></div>
+        <div class="tk"><span class="bx"></span>Renew car insurance</div>
+        <div class="tk done"><span class="bx">✓</span>Return library books</div>
+      </div>
+      <!-- clocks strip -->
+      <div class="abs strip" style="left:5%; top:74.5%; width:90%">
+        <div class="glass sc"><div><b>Kathmandu</b> <small>Tomorrow · +9h 45m</small></div><span>00:29 <small>☂ 60°</small></span></div>
+        <div class="glass sc"><div><b>Abu Dhabi</b> <small>Today · +8h</small></div><span>22:44 <small>☾ 86°</small></span></div>
+        <div class="glass sc"><div><b>Tokyo</b> <small>Tomorrow · +13h</small></div><span>03:44 <small>☾ 55°</small></span></div>
+      </div>
+      <div class="abs apps" style="bottom:2.5%"><div class="l" style="margin-bottom:.4cqw">Your apps</div><div class="row"><div class="a f" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div><div class="a" style="aspect-ratio:1.9"></div></div></div>
+    </div>
+    <ul class="verdict">
+      <li>Agenda gets the prime slot right under the hero clock, tall enough for four tasks and a hint line.</li>
+      <li>Weather keeps its forecast row; world clocks keep city, offset, time and weather, just on one line each.</li>
+      <li class="m">App tiles get a little shorter to make room.</li>
+      <li class="m">Clocks are less glanceable than today's cards.</li>
+    </ul>
+  </section>
+
+    </div>
+  </details>
+
+  <section>
+    <h2>Shared in every option</h2>
+    <p class="note"><b>Up next</b> shows the next three events from any calendar on your Google account's secret iCal link, with a relative "in 46 min" on the first. All-day events show as "All day". It is read-only; Select on the card could open the Google Calendar app if installed. <b>To do</b> lists open Todoist tasks ordered by due date, with overdue first. Moving to a task and pressing Select ticks it: the row shows a check and dims for a few seconds, then drops off the list, and Todoist marks it complete. Both blocks refresh every few minutes and when the TV wakes. If a block has no connection yet it shows a single line, "Connect in Settings", instead of empty space.</p>
+    <p class="note">G is chosen, with the forecast columns reading "Sat · icon" on one line and the temperatures beneath.</p>
+  </section>
+</main>
