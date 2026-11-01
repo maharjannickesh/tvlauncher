@@ -13,8 +13,15 @@ port() {
   local pid=$!
   sleep 6
   kill "$pid" 2>/dev/null
-  grep '_adb-tls-connect' "$out" | grep "$HOST" | head -1 | sed -E "s/.*$HOST:([0-9]+).*/\1/"
+  local p; p="$(grep '_adb-tls-connect' "$out" | grep "$HOST" | head -1 | sed -E "s/.*$HOST:([0-9]+).*/\1/")"
   rm -f "$out"
+  [ -n "$p" ] && { echo "$p"; return; }
+  # adb's own mDNS browser is blind on some Macs; macOS dns-sd still sees the TV.
+  local inst; inst="$(mktemp)"; dns-sd -B _adb-tls-connect._tcp local. >"$inst" 2>&1 & pid=$!; sleep 4; kill "$pid" 2>/dev/null
+  local name; name="$(grep '_adb-tls-connect' "$inst" | awk '{print $NF}' | head -1)"; rm -f "$inst"
+  [ -n "$name" ] || return 0
+  local res; res="$(mktemp)"; dns-sd -L "$name" _adb-tls-connect._tcp local. >"$res" 2>&1 & pid=$!; sleep 4; kill "$pid" 2>/dev/null
+  grep -oE 'can be reached at [^ ]+:[0-9]+' "$res" | head -1 | sed -E 's/.*:([0-9]+)$/\1/'; rm -f "$res"
 }
 
 # Reuses an already-connected 10.0.0.21 serial; otherwise discovers the port.
