@@ -53,6 +53,11 @@ data class Settings(
     val screensaverDim: Float = 0.35f,
     val screensaverSeconds: Boolean = false,
     val favourites: List<String> = DEFAULT_FAVOURITES,
+    /** Secret iCal links; never log. */
+    val calendarUrls: List<String> = emptyList(),
+    /** Secret Todoist API token; never log. */
+    val todoistToken: String? = null,
+    val continueWatchingDismissed: Boolean = false,
 )
 
 internal const val CLOCK_SLOTS = 3
@@ -80,10 +85,13 @@ internal object SettingsKeys {
     val screensaverDim = floatPreferencesKey("screensaver_dim")
     val screensaverSeconds = booleanPreferencesKey("screensaver_seconds")
     val favourites = stringPreferencesKey("favourites")
+    val calendarUrls = stringPreferencesKey("calendar_urls")
+    val todoistToken = stringPreferencesKey("todoist_token")
+    val continueWatchingDismissed = booleanPreferencesKey("continue_watching_dismissed")
 
     /** Keys that are only written when non-null, so they must be removed when a setting clears them. */
     val optionalKeys: List<Preferences.Key<*>> =
-        listOf(homeLat, homeLon) + (0 until CLOCK_SLOTS).flatMap { listOf(clockLat(it), clockLon(it)) }
+        listOf(homeLat, homeLon, todoistToken) + (0 until CLOCK_SLOTS).flatMap { listOf(clockLat(it), clockLon(it)) }
 }
 
 /** Writes every present key of [s] and removes optional keys that [s] no longer has. */
@@ -120,6 +128,9 @@ fun Settings.toPreferences(): Preferences {
     prefs[SettingsKeys.screensaverDim] = screensaverDim
     prefs[SettingsKeys.screensaverSeconds] = screensaverSeconds
     prefs[SettingsKeys.favourites] = favourites.joinToString(FAVOURITES_SEPARATOR)
+    prefs[SettingsKeys.calendarUrls] = calendarUrls.joinToString(FAVOURITES_SEPARATOR)
+    todoistToken?.let { prefs[SettingsKeys.todoistToken] = it }
+    prefs[SettingsKeys.continueWatchingDismissed] = continueWatchingDismissed
     return prefs
 }
 
@@ -157,5 +168,10 @@ fun Preferences.toSettings(): Settings {
         favourites = this[SettingsKeys.favourites]?.let { s ->
             if (s.isEmpty()) emptyList() else s.split(FAVOURITES_SEPARATOR)
         } ?: d.favourites,
+        calendarUrls = this[SettingsKeys.calendarUrls]?.let { s ->
+            if (s.isEmpty()) emptyList() else s.split(FAVOURITES_SEPARATOR)
+        } ?: d.calendarUrls,
+        todoistToken = this[SettingsKeys.todoistToken],
+        continueWatchingDismissed = this[SettingsKeys.continueWatchingDismissed] ?: d.continueWatchingDismissed,
     )
 }

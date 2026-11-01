@@ -22,4 +22,9 @@ class SettingsDraftTest {
         assertTrue(SettingsDraftRules.isDirty(saved, saved.copy(clocks = saved.clocks.drop(1)), 10, 10))
     }
     @Test fun minutesChange_isDirty() { assertTrue(SettingsDraftRules.isDirty(saved, saved, 10, 5)); assertFalse(SettingsDraftRules.isDirty(saved, saved, null, null)) }
+    @Test fun merge_keepsConnections() {
+        val s = Settings(calendarUrls = listOf("https://a"), todoistToken = "t")
+        assertEquals(s.calendarUrls, SettingsDraftRules.merge(s, Settings()).calendarUrls)
+        assertEquals("t", SettingsDraftRules.merge(s, Settings()).todoistToken)
+    }
 }

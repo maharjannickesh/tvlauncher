@@ -73,4 +73,17 @@ class SettingsMappingTest {
         assertNull(prefs[doublePreferencesKey("home_lat")]); assertNull(back.homeLat); assertEquals(5.0, back.homeLon!!, 1e-9)
         assertNull(prefs[doublePreferencesKey("clock0_lat")]); assertNull(back.clocks[0].lat); assertEquals(6.0, back.clocks[1].lat!!, 1e-9)
     }
+
+    @Test
+    fun connections_roundTrip() {
+        val s = Settings(calendarUrls = listOf("https://a/basic.ics", "https://b/basic.ics"), todoistToken = "tok1a2b", continueWatchingDismissed = true)
+        assertEquals(s, s.toPreferences().toSettings())
+    }
+
+    @Test
+    fun applySettings_removesClearedToken() {
+        val prefs = mutablePreferencesOf(); prefs.applySettings(Settings(todoistToken = "x"))
+        prefs.applySettings(Settings(todoistToken = null))
+        assertNull(prefs[SettingsKeys.todoistToken])
+    }
 }
