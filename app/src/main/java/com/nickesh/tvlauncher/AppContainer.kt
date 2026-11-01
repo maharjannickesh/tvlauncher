@@ -9,6 +9,9 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import com.nickesh.tvlauncher.data.apps.AppsRepository
+import com.nickesh.tvlauncher.data.calendar.CalendarRepository
+import com.nickesh.tvlauncher.data.net.OkHttpTextFetcher
+import com.nickesh.tvlauncher.data.net.TextFetcher
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
 import com.nickesh.tvlauncher.data.system.StandbyTracker
 import com.nickesh.tvlauncher.data.system.SystemIntents
@@ -32,13 +35,17 @@ class AppContainer(val context: Context) {
     val standby = StandbyTracker()
     val weatherCache = DataStoreWeatherCache(settingsStore)
     /** Open-Meteo client: weather loads go through [weather]; the Settings city picker searches it directly. */
-    val weatherApi: WeatherApi = OpenMeteoClient(
-        OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build(),
-        Json { ignoreUnknownKeys = true },
-    )
+    private val httpClient = OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build()
+    val weatherApi: WeatherApi = OpenMeteoClient(httpClient, Json { ignoreUnknownKeys = true })
     val weather = WeatherRepository(
         weatherApi,
         weatherCache,
         log = { Log.i("Weather", it) },
+    )
+    val textFetcher: TextFetcher = OkHttpTextFetcher(httpClient)
+    val calendar = CalendarRepository(
+        textFetcher,
+        settingsStore,
+        log = { Log.i("Calendar", it) },
     )
 }
