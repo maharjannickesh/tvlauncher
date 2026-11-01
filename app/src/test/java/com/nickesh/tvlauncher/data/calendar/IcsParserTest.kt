@@ -87,6 +87,12 @@ class IcsParserTest {
         assertEquals(java.time.Instant.parse("2026-10-26T13:00:00Z").toEpochMilli(), wide[0].startMs)
     }
 
+    @Test fun utcAnchoredRecurrence_staysAtUtcInstantAcrossDst() {
+        // June start is 09:00 NY; RFC 5545 pins UTC recurrences to the UTC instant, so November stays 13:00Z.
+        val s = starts("utc-weekly.ics")
+        assertEquals(java.time.Instant.parse("2026-11-02T13:00:00Z").toEpochMilli(), s[0])
+    }
+
     @Test fun untilAndCount_stopExpansion() {
         assertEquals(
             listOf(ms(2026, 11, 2, 9), ms(2026, 11, 9, 9), ms(2026, 11, 16, 9)),

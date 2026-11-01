@@ -121,7 +121,15 @@ object IcsParser {
 
         val iterTz: TimeZone = when {
             allDay -> TimeZone.getDefault()
-            else -> ical.timezoneInfo.getTimezone(dtStart)?.timeZone ?: TimeZone.getTimeZone(zone)
+            else -> {
+                val assigned = ical.timezoneInfo.getTimezone(dtStart)?.timeZone
+                when {
+                    assigned != null -> assigned // TZID
+                    // No TZID and not floating: a UTC ("...Z") anchor, fixed at the UTC instant.
+                    !ical.timezoneInfo.isFloating(dtStart) -> TimeZone.getTimeZone("UTC")
+                    else -> TimeZone.getTimeZone(zone) // floating
+                }
+            }
         }
         val it = e.getDateIterator(iterTz)
         // Skip ahead to (roughly) the window start, leaving room for the event's own length.
