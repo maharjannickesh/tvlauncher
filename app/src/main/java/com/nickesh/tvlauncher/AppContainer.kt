@@ -13,6 +13,8 @@ import com.nickesh.tvlauncher.data.calendar.CalendarRepository
 import com.nickesh.tvlauncher.data.net.OkHttpTextFetcher
 import com.nickesh.tvlauncher.data.net.TextFetcher
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
+import com.nickesh.tvlauncher.data.todoist.HttpTodoistApi
+import com.nickesh.tvlauncher.data.todoist.TodoistRepository
 import com.nickesh.tvlauncher.data.system.StandbyTracker
 import com.nickesh.tvlauncher.data.system.SystemIntents
 import com.nickesh.tvlauncher.data.weather.DataStoreWeatherCache
@@ -47,5 +49,10 @@ class AppContainer(val context: Context) {
         textFetcher,
         settingsStore,
         log = { Log.i("Calendar", it) },
+    )
+    val todoist = TodoistRepository(
+        HttpTodoistApi(httpClient, Json { ignoreUnknownKeys = true }),
+        settingsStore,
+        log = { Log.i("Todoist", it) },
     )
 }
