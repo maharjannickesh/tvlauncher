@@ -37,6 +37,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
@@ -123,7 +124,16 @@ fun SwitchVisual(on: Boolean) {
 }
 
 @Composable
-fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, rowRequester: FocusRequester = remember { FocusRequester() }, onCommit: (String) -> Unit) {
+fun TextSettingRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    rowRequester: FocusRequester = remember { FocusRequester() },
+    /** Clears the field on every open (for secrets that must never be pre-filled). */
+    startEmpty: Boolean = false,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    onCommit: (String) -> Unit,
+) {
     var editing by remember { mutableStateOf(false) }
     var draft by remember { mutableStateOf(value) }
     var hadFocus by remember { mutableStateOf(false) }
@@ -133,12 +143,13 @@ fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, 
         if (editing) runCatching { requester.requestFocus() }
         else if (hadFocus) { hadFocus = false; runCatching { rowRequester.requestFocus() } } // Done/Back, not focus moved away
     }
-    SettingRow(label, modifier.focusRequester(rowRequester), onClick = { draft = value; hadFocus = false; editing = true }) {
+    SettingRow(label, modifier.focusRequester(rowRequester), onClick = { draft = if (startEmpty) "" else value; hadFocus = false; editing = true }) {
         if (editing) {
             BasicTextField(
                 value = draft,
                 onValueChange = { draft = it },
                 singleLine = true,
+                visualTransformation = visualTransformation,
                 textStyle = TextStyle(color = Color.White, fontFamily = Outfit, fontSize = 24.spx(), textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Color.White),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
@@ -146,9 +157,10 @@ fun TextSettingRow(label: String, value: String, modifier: Modifier = Modifier, 
                     val t = draft.trim()
                     if (t.isNotEmpty()) onCommit(t)
                     editing = false
+                    if (startEmpty) draft = ""
                 }),
                 modifier = Modifier.size(width = 360.dpx(), height = 40.dpx()).focusRequester(requester)
-                    .onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && editing) { editing = false; draft = value; hadFocus = false } },
+                    .onFocusChanged { if (it.isFocused) hadFocus = true else if (hadFocus && editing) { editing = false; draft = if (startEmpty) "" else value; hadFocus = false } },
             )
         } else {
             ValueText(value)

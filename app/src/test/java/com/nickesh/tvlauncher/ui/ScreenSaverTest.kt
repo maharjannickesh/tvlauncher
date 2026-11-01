@@ -18,7 +18,7 @@ class ScreenSaverTest {
     }
 
     @Test fun otherScreensSurvive() {
-        listOf(Screen.Welcome, Screen.Home, Screen.Settings, Screen.Background).forEach {
+        listOf(Screen.Welcome, Screen.Home, Screen.Settings, Screen.Background, Screen.Connect).forEach {
             assertEquals(it, roundTrip(it))
         }
     }

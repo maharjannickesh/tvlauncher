@@ -81,6 +81,14 @@ fun SettingsScreen(
     onOpenHomeKey: () -> Unit = {},
     idleWritable: Boolean = true,
     onOpenIdlePermission: () -> Unit = {},
+    calendarCount: Int = 0,
+    todoistConnected: Boolean = false,
+    watchingGranted: Boolean = false,
+    /** Opens Connect; the argument is the row key ("calendar" / "todo") focus returns to. */
+    onOpenConnect: (String) -> Unit = {},
+    onAllowWatching: () -> Unit = {},
+    /** Row key to focus on entry (e.g. back from Connect); wins over [focusBackgroundRow]. */
+    focusRowKey: String? = null,
 ) {
     val settings = draft.settings
     val dirty = SettingsDraftRules.isDirty(saved, settings, savedIdleMinutes, draft.screensaverAfterMinutes)
@@ -107,7 +115,9 @@ fun SettingsScreen(
     val bgRow = req("background")
     val idleRow = req("idle")
     var restoreTo by remember { mutableStateOf<FocusRequester?>(null) }
-    LaunchedEffect(Unit) { runCatching { (if (focusBackgroundRow) bgRow else firstRow).requestFocus() } }
+    LaunchedEffect(Unit) {
+        runCatching { (focusRowKey?.let { req(it) } ?: if (focusBackgroundRow) bgRow else firstRow).requestFocus() }
+    }
     fun closePanel(returnTo: FocusRequester) {
         panel = null
         restoreTo = returnTo
@@ -180,6 +190,26 @@ fun SettingsScreen(
                         )
                     }
                     SettingRow("Background…", tracked("background"), onClick = onOpenBackground) { ValueText("›") }
+                    Text(
+                        "Connections",
+                        color = Color(0xCCFFFFFF), fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 22.spx(),
+                        modifier = Modifier.padding(start = 8.dpx(), top = 14.dpx()),
+                    )
+                    SettingRow("Calendar…", tracked("calendar"), onClick = { onOpenConnect("calendar") }) {
+                        ValueText(
+                            when (calendarCount) {
+                                0 -> "Not connected"
+                                1 -> "1 calendar"
+                                else -> "$calendarCount calendars"
+                            },
+                        )
+                    }
+                    SettingRow("To-do list…", tracked("todo"), onClick = { onOpenConnect("todo") }) {
+                        ValueText(if (todoistConnected) "Todoist" else "Not connected")
+                    }
+                    SettingRow("Continue watching", tracked("watching"), onClick = { if (!watchingGranted) onAllowWatching() }) {
+                        ValueText(if (watchingGranted) "On" else "Allow…")
+                    }
                     SettingRow("Home button…", tracked("homeKey"), onClick = onOpenHomeKey) { ValueText(if (homeKeyEnabled) "On  ›" else "Off  ›") }
                     Text(
                         "Turn on 'TV Launcher Home key' there to make the Home button open this launcher.",

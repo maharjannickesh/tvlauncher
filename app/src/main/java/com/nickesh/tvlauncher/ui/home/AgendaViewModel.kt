@@ -234,6 +234,14 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
     fun onWatchNextPermission(granted: Boolean) {
         if (granted) {
             reloadWatchNext()
+            // A grant (from Home or Settings) brings the row back even after an earlier "Not now".
+            viewModelScope.launch(Dispatchers.IO) {
+                try {
+                    settingsRepo.update { if (it.continueWatchingDismissed) it.copy(continueWatchingDismissed = false) else it }
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                }
+            }
         } else {
             viewModelScope.launch(Dispatchers.IO) {
                 try {

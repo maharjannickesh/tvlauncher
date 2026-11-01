@@ -8,6 +8,7 @@ sealed interface Screen {
     data class AllApps(val focusSearch: Boolean = false) : Screen
     data object Settings : Screen
     data object Background : Screen
+    data object Connect : Screen
 }
 
 internal val ScreenSaver = Saver<Screen, String>(
@@ -19,6 +20,7 @@ internal val ScreenSaver = Saver<Screen, String>(
             "AllApps:1" -> Screen.AllApps(focusSearch = true)
             "Settings" -> Screen.Settings
             "Background" -> Screen.Background
+            "Connect" -> Screen.Connect
             else -> Screen.Home
         }
     },

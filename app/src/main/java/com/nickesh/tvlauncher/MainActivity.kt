@@ -2,6 +2,8 @@ package com.nickesh.tvlauncher
 
 import android.content.ActivityNotFoundException
 import android.content.Intent
+import androidx.core.content.edit
+import androidx.core.net.toUri
 import android.os.Bundle
 import android.os.PowerManager
 import android.os.SystemClock
@@ -42,6 +44,16 @@ import com.nickesh.tvlauncher.ui.home.HomeScreen
 import com.nickesh.tvlauncher.ui.home.HomeViewModel
 import com.nickesh.tvlauncher.ui.home.SystemAction
 import com.nickesh.tvlauncher.ui.settings.BackgroundScreen
+import com.nickesh.tvlauncher.ui.settings.ConnectScreen
+import com.nickesh.tvlauncher.data.connect.ConnectHandler
+import com.nickesh.tvlauncher.data.connect.ConnectOutcome
+import com.nickesh.tvlauncher.data.connect.ConnectServer
+import com.nickesh.tvlauncher.data.connect.LanAddress
+import com.nickesh.tvlauncher.domain.connect.ConnectCode
+import com.nickesh.tvlauncher.domain.connect.ConnectRules
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import com.nickesh.tvlauncher.ui.settings.SettingsScreen
 import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import androidx.lifecycle.lifecycleScope
@@ -70,6 +82,28 @@ class MainActivity : ComponentActivity() {
             agendaVm.onWatchNextPermission(granted)
         }
     }
+
+    /**
+     * Asks for READ_TV_LISTINGS. Android answers "deny" silently once the user has refused for good, so after a
+     * first ask with no rationale to show, the app's details page (where it can be switched on) opens instead.
+     */
+    private fun allowWatching() {
+        val prefs = getSharedPreferences(PERMISSION_PREFS, MODE_PRIVATE)
+        if (!prefs.getBoolean(WATCH_ASKED, false) || shouldShowRequestPermissionRationale(READ_TV_LISTINGS)) {
+            prefs.edit { putBoolean(WATCH_ASKED, true) }
+            requestPermissions(arrayOf(READ_TV_LISTINGS), WATCH_NEXT_REQUEST)
+            return
+        }
+        val details = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:$packageName".toUri())
+        try {
+            startActivity(details)
+        } catch (_: ActivityNotFoundException) {
+            Toast.makeText(this, "Allow 'Read TV listings' for TV Launcher in TV Settings → Apps", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun watchingGranted(): Boolean =
+        checkSelfPermission(READ_TV_LISTINGS) == android.content.pm.PackageManager.PERMISSION_GRANTED
 
     /** Resumes a Continue-watching title in its own app; falls back to opening the app. Never logs the intent URI. */
     private fun resume(container: AppContainer, tile: WatchTile) {
@@ -120,6 +154,8 @@ class MainActivity : ComponentActivity() {
                 if (homePresses.value > 0) HomeKey.next(screen)?.let { screen = it }
             }
             var cameFromBackground by rememberSaveable { mutableStateOf(false) }
+            // Settings row ("calendar" / "todo") that opened Connect; focus returns there on Back.
+            var connectFrom by rememberSaveable { mutableStateOf<String?>(null) }
             // The Settings draft lives above the screen switch so Background → back keeps pending edits.
             // Replaced on every open from Home; a config change loses it (Settings branch re-creates it).
             var draft by remember { mutableStateOf<SettingsDraft?>(null) }
@@ -192,12 +228,14 @@ class MainActivity : ComponentActivity() {
                             val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
                             var homeKeyOn by remember { mutableStateOf(HomeKeyState.read(this@MainActivity)) }
                             var idleWritable by remember { mutableStateOf(IdleTimer.canWriteIdle(this@MainActivity)) }
+                            var watching by remember { mutableStateOf(watchingGranted()) }
                             // Back from the Accessibility page only resumes this activity; re-read there.
                             androidx.compose.runtime.DisposableEffect(lifecycleOwner) {
                                 val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
                                     if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
                                         homeKeyOn = HomeKeyState.read(this@MainActivity)
                                         idleWritable = IdleTimer.canWriteIdle(this@MainActivity)
+                                        watching = watchingGranted()
                                     }
                                 }
                                 lifecycleOwner.lifecycle.addObserver(obs)
@@ -227,7 +265,7 @@ class MainActivity : ComponentActivity() {
                                     }
                                 },
                                 onLeave = { screen = Screen.Home },
-                                onOpenBackground = { cameFromBackground = true; screen = Screen.Background },
+                                onOpenBackground = { cameFromBackground = true; connectFrom = null; screen = Screen.Background },
                                 search = { q -> container.weatherApi.search(q) },
                                 focusBackgroundRow = cameFromBackground,
                                 homeKeyEnabled = homeKeyOn,
@@ -242,6 +280,12 @@ class MainActivity : ComponentActivity() {
                                         Toast.makeText(this@MainActivity, "Grant 'Modify system settings' over adb: tools/tv.sh idle-perm", Toast.LENGTH_LONG).show()
                                     }
                                 },
+                                calendarCount = cur.calendarUrls.size,
+                                todoistConnected = cur.todoistToken != null,
+                                watchingGranted = watching,
+                                onOpenConnect = { from -> connectFrom = from; cameFromBackground = false; screen = Screen.Connect },
+                                onAllowWatching = ::allowWatching,
+                                focusRowKey = connectFrom,
                             )
                         }
                         Screen.Background -> {
@@ -249,6 +293,66 @@ class MainActivity : ComponentActivity() {
                             BackgroundScreen(
                                 settings = cur,
                                 onUpdate = { f -> lifecycleScope.launch { container.settings.update(f) } },
+                                onBack = { screen = Screen.Settings },
+                            )
+                        }
+                        Screen.Connect -> {
+                            val cur by container.settings.settings.collectAsStateWithLifecycle(initialValue = settings)
+                            var results by remember { mutableStateOf<List<ConnectOutcome>>(emptyList()) }
+                            var checking by remember { mutableStateOf(false) }
+                            var url by remember { mutableStateOf<String?>(null) }
+                            // Same rules for the phone page and the remote-typed rows; saves go straight to the store.
+                            val handler = remember {
+                                ConnectHandler(
+                                    current = { runBlocking { container.settings.settings.first() } },
+                                    validateCalendar = container.calendar::validate,
+                                    validateToken = container.todoist::validate,
+                                    save = { f -> container.settings.update(f) },
+                                )
+                            }
+                            // The phone page is served only while this screen is showing.
+                            androidx.compose.runtime.DisposableEffect(handler) {
+                                val server = ConnectServer(handler, ConnectCode.generate(), onResults = { r -> runOnUiThread { results = r } })
+                                val started = try {
+                                    server.start(); true
+                                } catch (e: java.io.IOException) {
+                                    Log.w("Connect", "server start failed: ${e.javaClass.simpleName}")
+                                    false
+                                }
+                                url = if (started) LanAddress.ipv4()?.let(server.url) else null
+                                onDispose { server.stop() }
+                            }
+                            var names by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+                            // Feed names come from the agenda cache, which fills shortly after a new link is saved.
+                            LaunchedEffect(cur.calendarUrls) {
+                                repeat(20) {
+                                    val byUrl = container.calendar.cached()?.byUrl.orEmpty()
+                                    names = cur.calendarUrls.mapNotNull { u -> byUrl[u]?.firstOrNull()?.calendar?.let { u to it } }.toMap()
+                                    if (names.size == cur.calendarUrls.size) return@LaunchedEffect
+                                    delay(3000)
+                                }
+                            }
+                            val submit = { cal: String?, token: String? ->
+                                checking = true
+                                lifecycleScope.launch {
+                                    val r = withContext(Dispatchers.IO) { handler.submit(cal, token) }
+                                    results = r
+                                    checking = false
+                                }
+                                Unit
+                            }
+                            ConnectScreen(
+                                settings = cur,
+                                url = url,
+                                results = results,
+                                calendarNames = names,
+                                checking = checking,
+                                onDisconnectCalendar = { u ->
+                                    lifecycleScope.launch { container.settings.update { it.copy(calendarUrls = ConnectRules.removeCalendar(it.calendarUrls, u)) } }
+                                },
+                                onDisconnectTodoist = { lifecycleScope.launch { container.settings.update { it.copy(todoistToken = null) } } },
+                                onTypeCalendar = { submit(it, null) },
+                                onTypeToken = { submit(null, it) },
                                 onBack = { screen = Screen.Settings },
                             )
                         }
@@ -263,7 +367,7 @@ class MainActivity : ComponentActivity() {
                                 onTick = agendaVm::tick,
                                 onUndo = agendaVm::undo,
                                 onResume = { tile -> resume(container, tile) },
-                                onAllowWatching = { requestPermissions(arrayOf(READ_TV_LISTINGS), WATCH_NEXT_REQUEST) },
+                                onAllowWatching = ::allowWatching,
                                 onOpenCalendar = {
                                     if (!container.apps.launch(CALENDAR_PACKAGE)) {
                                         Toast.makeText(this@MainActivity, "Google Calendar isn't installed", Toast.LENGTH_SHORT).show()
@@ -271,7 +375,7 @@ class MainActivity : ComponentActivity() {
                                 },
                                 onOpenAllApps = { screen = Screen.AllApps() },
                                 onOpenAllAppsSearch = { screen = Screen.AllApps(focusSearch = true) },
-                                onOpenSettings = { cameFromBackground = false; openDraft(settings); screen = Screen.Settings },
+                                onOpenSettings = { cameFromBackground = false; connectFrom = null; openDraft(settings); screen = Screen.Settings },
                                 onLaunch = launch,
                                 showInputs = showInputs,
                                 onAction = { action ->
@@ -291,5 +395,7 @@ class MainActivity : ComponentActivity() {
         const val WATCH_NEXT_REQUEST = 7
         const val READ_TV_LISTINGS = "android.permission.READ_TV_LISTINGS"
         const val CALENDAR_PACKAGE = "com.google.android.calendar"
+        const val PERMISSION_PREFS = "permissions"
+        const val WATCH_ASKED = "watch_next_asked"
     }
 }

@@ -12,5 +12,6 @@ class HomeKeyTest {
         assertEquals(Screen.Home, HomeKey.next(Screen.AllApps()))
         assertEquals(Screen.Home, HomeKey.next(Screen.Settings))
         assertEquals(Screen.Home, HomeKey.next(Screen.Background))
+        assertEquals(Screen.Home, HomeKey.next(Screen.Connect))
     }
 }

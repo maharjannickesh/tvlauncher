@@ -22,7 +22,13 @@ object LanAddress {
  * Serves the phone page at /c/<code> while the Connect screen is open. Anything else is a bare 404.
  * Bodies and queries carry secrets and are never logged.
  */
-class ConnectServer(private val handler: ConnectHandler, private val code: String, private val port: Int = 0) {
+class ConnectServer(
+    private val handler: ConnectHandler,
+    private val code: String,
+    private val port: Int = 0,
+    /** Called on the server thread with each phone submission's outcomes, so the TV can mirror them. */
+    private val onResults: (List<ConnectOutcome>) -> Unit = {},
+) {
     private var server: Server? = null
 
     fun start(): Int {
@@ -57,6 +63,7 @@ class ConnectServer(private val handler: ConnectHandler, private val code: Strin
             return try {
                 session.parseBody(HashMap())
                 val results = runBlocking { handler.submit(session.parms["calendar"], session.parms["token"]) }
+                onResults(results)
                 page(results)
             } catch (e: Exception) {
                 // Class name only: messages and traces may carry secrets.
