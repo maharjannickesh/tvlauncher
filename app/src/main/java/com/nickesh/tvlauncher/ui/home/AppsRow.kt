@@ -45,6 +45,7 @@ fun AppsRow(
     onLaunch: (AppTile) -> Unit,
     onOpenAllApps: () -> Unit,
     modifier: Modifier = Modifier,
+    tileHeightPx: Int = 104,
 ) {
     val requesters = remember { mutableMapOf<String, FocusRequester>() }
     fun requesterFor(pkg: String) = requesters.getOrPut(pkg) { FocusRequester() }
@@ -74,6 +75,7 @@ fun AppsRow(
                     AppTileButton(
                         app = app,
                         accent = accent,
+                        tileHeightPx = tileHeightPx,
                         onClick = { if (app.packageName.isEmpty()) onOpenAllApps() else onLaunch(app) },
                         modifier = Modifier
                             .focusRequester(requesterFor(app.packageName))
@@ -96,11 +98,12 @@ fun AppTileButton(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    tileHeightPx: Int = 104,
 ) {
-    Tile(app.label, app.tone, accent, onClick, modifier) {
+    Tile(app.label, app.tone, accent, onClick, modifier, tileHeightPx) {
         when {
             app.packageName.isEmpty() -> Icon(Icons.Grid, null, Modifier.size(36.dpx()), tint = Color.White)
-            app.banner != null -> Image(app.banner, app.label, Modifier.size(172.dpx(), 104.dpx()), contentScale = ContentScale.Crop)
+            app.banner != null -> Image(app.banner, app.label, Modifier.size(172.dpx(), tileHeightPx.dpx()), contentScale = ContentScale.Crop)
             app.icon != null -> Image(app.icon, app.label, Modifier.size(64.dpx()))
             else -> Text(
                 app.label.take(1),
@@ -120,6 +123,7 @@ private fun Tile(
     accent: Color,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    tileHeightPx: Int = 104,
     content: @Composable () -> Unit,
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -127,7 +131,7 @@ private fun Tile(
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dpx())) {
         Surface(
             onClick = onClick,
-            modifier = modifier.size(172.dpx(), 104.dpx()).onFocusChanged { focused = it.isFocused },
+            modifier = modifier.size(172.dpx(), tileHeightPx.dpx()).onFocusChanged { focused = it.isFocused },
             shape = ClickableSurfaceDefaults.shape(shape),
             colors = ClickableSurfaceDefaults.colors(
                 containerColor = tone,
@@ -142,7 +146,7 @@ private fun Tile(
             ),
             glow = ClickableSurfaceDefaults.glow(focusedGlow = focusGlow(accent)),
         ) {
-            Box(Modifier.size(172.dpx(), 104.dpx()), contentAlignment = Alignment.Center) { content() }
+            Box(Modifier.size(172.dpx(), tileHeightPx.dpx()), contentAlignment = Alignment.Center) { content() }
         }
         Text(
             label,

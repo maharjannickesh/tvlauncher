@@ -32,11 +32,11 @@ import com.nickesh.tvlauncher.ui.theme.dpx
 import com.nickesh.tvlauncher.ui.theme.spx
 
 @Composable
-fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier, up: FocusRequester = FocusRequester.Default) {
+fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier, up: FocusRequester = FocusRequester.Default, heightPx: Int = 152, timeSpx: Int = 52) {
     val shape = RoundedCornerShape(28.dpx())
     Surface(
         onClick = onClick,
-        modifier = modifier.height(152.dpx()).focusProperties { this.up = up },
+        modifier = modifier.height(heightPx.dpx()).focusProperties { this.up = up },
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x1AFFFFFF),
@@ -51,7 +51,7 @@ fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, mod
         ),
         glow = ClickableSurfaceDefaults.glow(focusedGlow = focusGlow(accent)),
     ) {
-        Box(Modifier.fillMaxWidth().height(152.dpx())) {
+        Box(Modifier.fillMaxWidth().height(heightPx.dpx())) {
             Column(
                 Modifier.align(Alignment.CenterStart).padding(horizontal = 28.dpx()),
                 verticalArrangement = Arrangement.spacedBy(2.dpx()),
@@ -69,8 +69,8 @@ fun WorldClockCard(clock: ClockSnapshot, accent: Color, onClick: () -> Unit, mod
                     },
                     fontFamily = Outfit,
                     fontWeight = FontWeight.W300,
-                    fontSize = 52.spx(),
-                    lineHeight = 56.spx(),
+                    fontSize = timeSpx.spx(),
+                    lineHeight = (timeSpx + 4).spx(),
                     style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
                     maxLines = 1,
                 )

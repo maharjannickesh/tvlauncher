@@ -37,8 +37,9 @@ class AppContainer(val context: Context) {
     val systemIntents = SystemIntents(context)
     val standby = StandbyTracker()
     val weatherCache = DataStoreWeatherCache(settingsStore)
+    /** Shared OkHttp client (also Coil's network fetcher for Continue-watching posters). */
+    val httpClient = OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build()
     /** Open-Meteo client: weather loads go through [weather]; the Settings city picker searches it directly. */
-    private val httpClient = OkHttpClient.Builder().callTimeout(10, TimeUnit.SECONDS).build()
     val weatherApi: WeatherApi = OpenMeteoClient(httpClient, Json { ignoreUnknownKeys = true })
     val weather = WeatherRepository(
         weatherApi,

@@ -5,7 +5,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -42,11 +44,11 @@ internal fun WeatherKind.icon(): ImageVector = when (this) {
 
 @Composable
 /** [weather] is null until the first load succeeds: shows "--°" with the configured [city] and no forecast. */
-fun WeatherCard(weather: WeatherUi?, city: String, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun WeatherCard(weather: WeatherUi?, city: String, accent: Color, onClick: () -> Unit, modifier: Modifier = Modifier, widthPx: Int = 580) {
     val shape = RoundedCornerShape(28.dpx())
     Surface(
         onClick = onClick,
-        modifier = modifier.width(580.dpx()),
+        modifier = modifier.width(widthPx.dpx()),
         shape = ClickableSurfaceDefaults.shape(shape),
         colors = ClickableSurfaceDefaults.colors(
             containerColor = Color(0x1AFFFFFF),
@@ -100,15 +102,25 @@ fun WeatherCard(weather: WeatherUi?, city: String, accent: Color, onClick: () ->
                 }
             }
             Column(Modifier.fillMaxWidth().height(1.dpx()).background(Color(0x29FFFFFF))) {}
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dpx())) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 weather?.forecast.orEmpty().forEach { f ->
+                    // Day name left with its icon right-aligned on the same line; "hi lo" left-aligned under it.
                     Column(
-                        Modifier.weight(1f),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(8.dpx()),
+                        Modifier.width(IntrinsicSize.Max),
+                        verticalArrangement = Arrangement.spacedBy(6.dpx()),
                     ) {
-                        Text(f.day, color = Color.White.copy(alpha = 0.78f), fontFamily = Outfit, fontWeight = FontWeight.W400, fontSize = 20.spx())
-                        Icon(f.kind.icon(), null, Modifier.size(34.dpx()), tint = Color.White)
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                f.day,
+                                modifier = Modifier.padding(end = 10.dpx()),
+                                color = Color.White.copy(alpha = 0.78f),
+                                fontFamily = Outfit,
+                                fontWeight = FontWeight.W400,
+                                fontSize = 20.spx(),
+                            )
+                            Spacer(Modifier.weight(1f))
+                            Icon(f.kind.icon(), null, Modifier.size(28.dpx()), tint = Color.White)
+                        }
                         Text(
                             buildAnnotatedString {
                                 withStyle(SpanStyle(fontWeight = FontWeight.W500)) { append(f.hi) }

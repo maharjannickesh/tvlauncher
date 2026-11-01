@@ -19,10 +19,10 @@ import com.nickesh.tvlauncher.ui.theme.dpx
 import com.nickesh.tvlauncher.ui.theme.spx
 
 @Composable
-fun HeroClock(hero: TimeText, dateLine: String, modifier: Modifier = Modifier) {
+fun HeroClock(hero: TimeText, dateLine: String, modifier: Modifier = Modifier, digitSpx: Int = 220) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dpx())) {
         // Compose seats the 0.9 line box higher than CSS does; nudge the glyphs onto the mockup baseline.
-        Row(Modifier.offset(y = 38.dpx()), horizontalArrangement = Arrangement.spacedBy(18.dpx())) {
+        Row(Modifier.offset(y = (38 * digitSpx / 220).dpx()), horizontalArrangement = Arrangement.spacedBy(18.dpx())) {
             Text(
                 hero.time,
                 modifier = Modifier.alignBy(androidx.compose.ui.layout.LastBaseline),
@@ -30,8 +30,8 @@ fun HeroClock(hero: TimeText, dateLine: String, modifier: Modifier = Modifier) {
                 style = TextStyle(
                     fontFamily = Outfit,
                     fontWeight = FontWeight.W200,
-                    fontSize = 220.spx(),
-                    lineHeight = (220 * 0.9f).toInt().spx(),
+                    fontSize = digitSpx.spx(),
+                    lineHeight = (digitSpx * 0.9f).toInt().spx(),
                     letterSpacing = (-8).spx(),
                     fontFeatureSettings = "tnum",
                     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
