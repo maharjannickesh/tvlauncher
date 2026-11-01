@@ -132,6 +132,7 @@ fun TextSettingRow(
     /** Clears the field on every open (for secrets that must never be pre-filled). */
     startEmpty: Boolean = false,
     visualTransformation: VisualTransformation = VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
     onCommit: (String) -> Unit,
 ) {
     var editing by remember { mutableStateOf(false) }
@@ -140,6 +141,7 @@ fun TextSettingRow(
     val requester = remember { FocusRequester() }
     BackHandler(enabled = editing) { editing = false }
     LaunchedEffect(editing) {
+        if (!editing && startEmpty) draft = "" // every close (Done, Back, focus moved): the secret leaves memory
         if (editing) runCatching { requester.requestFocus() }
         else if (hadFocus) { hadFocus = false; runCatching { rowRequester.requestFocus() } } // Done/Back, not focus moved away
     }
@@ -152,7 +154,7 @@ fun TextSettingRow(
                 visualTransformation = visualTransformation,
                 textStyle = TextStyle(color = Color.White, fontFamily = Outfit, fontSize = 24.spx(), textAlign = TextAlign.End),
                 cursorBrush = SolidColor(Color.White),
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardOptions = keyboardOptions,
                 keyboardActions = KeyboardActions(onDone = {
                     val t = draft.trim()
                     if (t.isNotEmpty()) onCommit(t)

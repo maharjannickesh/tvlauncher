@@ -20,9 +20,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -72,11 +74,11 @@ fun ConnectScreen(
     onBack: () -> Unit,
 ) {
     BackHandler { onBack() }
-    val firstRow = remember { FocusRequester() }
     val calendarEntry = remember { FocusRequester() }
     val tokenEntry = remember { FocusRequester() }
     val anyConnected = settings.calendarUrls.isNotEmpty() || settings.todoistToken != null
-    LaunchedEffect(Unit) { runCatching { (if (anyConnected) firstRow else calendarEntry).requestFocus() } }
+    // Never a Disconnect row: one stray OK on entry must not remove a connection.
+    LaunchedEffect(Unit) { runCatching { calendarEntry.requestFocus() } }
     Box(Modifier.fillMaxSize()) {
         Background(settings, dim = 0.72f, scrim = false)
         Column(Modifier.fillMaxSize().padding(start = 96.dpx(), end = 96.dpx(), top = 48.dpx(), bottom = 32.dpx())) {
@@ -113,8 +115,8 @@ fun ConnectScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dpx()),
                 ) {
                     Text("CONNECTED", color = Dim80, fontFamily = Outfit, fontWeight = FontWeight.W500, fontSize = 22.spx(), letterSpacing = 1.spx())
-                    settings.calendarUrls.forEachIndexed { i, u ->
-                        SettingRow(calendarLabel(u, calendarNames), if (i == 0) Modifier.focusRequester(firstRow) else Modifier, onClick = {
+                    settings.calendarUrls.forEach { u ->
+                        SettingRow(calendarLabel(u, calendarNames), onClick = {
                             runCatching { calendarEntry.requestFocus() }
                             onDisconnectCalendar(u)
                         }) { ValueText("Disconnect") }
@@ -123,7 +125,6 @@ fun ConnectScreen(
                     if (token != null) {
                         SettingRow(
                             "Todoist  ${ConnectRules.maskToken(token)}",
-                            if (settings.calendarUrls.isEmpty()) Modifier.focusRequester(firstRow) else Modifier,
                             onClick = {
                             runCatching { tokenEntry.requestFocus() }
                             onDisconnectTodoist()
@@ -135,10 +136,12 @@ fun ConnectScreen(
                     TextSettingRow(
                         "Type a calendar link here…", "", Modifier.padding(top = 14.dpx()),
                         rowRequester = calendarEntry, startEmpty = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, autoCorrectEnabled = false, imeAction = ImeAction.Done),
                     ) { onTypeCalendar(it) }
                     TextSettingRow(
                         "Type a Todoist token here…", "", rowRequester = tokenEntry, startEmpty = true,
                         visualTransformation = PasswordVisualTransformation(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false, imeAction = ImeAction.Done),
                     ) { onTypeToken(it) }
                     Column(Modifier.fillMaxWidth().padding(top = 12.dpx(), start = 8.dpx()), verticalArrangement = Arrangement.spacedBy(6.dpx())) {
                         if (checking) Text("Checking…", color = Dim80, fontFamily = Outfit, fontSize = 24.spx())

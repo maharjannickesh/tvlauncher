@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
@@ -310,8 +311,9 @@ class MainActivity : ComponentActivity() {
                                     save = { f -> container.settings.update(f) },
                                 )
                             }
-                            // The phone page is served only while this screen is showing.
-                            androidx.compose.runtime.DisposableEffect(handler) {
+                            // The phone page is served only while this screen is showing in a started activity: the
+                            // screensaver or standby stops it; coming back starts a fresh server (new code and port).
+                            LifecycleStartEffect(handler) {
                                 val server = ConnectServer(handler, ConnectCode.generate(), onResults = { r -> runOnUiThread { results = r } })
                                 val started = try {
                                     server.start(); true
@@ -320,7 +322,10 @@ class MainActivity : ComponentActivity() {
                                     false
                                 }
                                 url = if (started) LanAddress.ipv4()?.let(server.url) else null
-                                onDispose { server.stop() }
+                                onStopOrDispose {
+                                    server.stop()
+                                    url = null
+                                }
                             }
                             var names by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
                             // Feed names come from the agenda cache, which fills shortly after a new link is saved.
