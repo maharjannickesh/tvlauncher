@@ -2,6 +2,8 @@ package com.nickesh.tvlauncher.data.connect
 
 import fi.iki.elonen.NanoHTTPD
 import kotlinx.coroutines.runBlocking
+import java.util.logging.Logger
+import java.io.IOException
 import java.net.Inet4Address
 import java.net.NetworkInterface
 
@@ -48,13 +50,20 @@ class ConnectServer(private val handler: ConnectHandler, private val code: Strin
         }
 
         private fun post(session: IHTTPSession): Response {
-            val length = session.headers["content-length"]?.toLongOrNull() ?: 0L
-            if (length > MAX_BODY) {
-                return newFixedLengthResponse(Response.Status.PAYLOAD_TOO_LARGE, MIME_PLAINTEXT, "")
+            if (!session.queryParameterString.isNullOrEmpty()) return empty(Response.Status.BAD_REQUEST)
+            val rawLength = session.headers["content-length"]
+            val length = rawLength?.toLongOrNull() ?: if (rawLength == null) 0L else return empty(Response.Status.BAD_REQUEST)
+            if (length > MAX_BODY) return empty(Response.Status.PAYLOAD_TOO_LARGE)
+            return try {
+                session.parseBody(HashMap())
+                val results = runBlocking { handler.submit(session.parms["calendar"], session.parms["token"]) }
+                page(results)
+            } catch (e: Exception) {
+                // Class name only: messages and traces may carry secrets.
+                log.warning("connect post failed: ${e.javaClass.simpleName}")
+                if (e is IOException || e is ResponseException) empty(Response.Status.BAD_REQUEST)
+                else page(listOf(ConnectOutcome.Failed("Something went wrong — try again")))
             }
-            session.parseBody(HashMap())
-            val results = runBlocking { handler.submit(session.parms["calendar"], session.parms["token"]) }
-            return page(results)
         }
 
         private fun page(results: List<ConnectOutcome>): Response {
@@ -63,10 +72,12 @@ class ConnectServer(private val handler: ConnectHandler, private val code: Strin
                 .apply { addHeader("Cache-Control", "no-store") }
         }
 
-        private fun notFound() = newFixedLengthResponse(Response.Status.NOT_FOUND, MIME_PLAINTEXT, "")
+        private fun empty(status: Response.Status) = newFixedLengthResponse(status, MIME_PLAINTEXT, "")
+        private fun notFound() = empty(Response.Status.NOT_FOUND)
     }
 
     private companion object {
+        val log: Logger = Logger.getLogger("ConnectServer")
         const val MAX_BODY = 8 * 1024L
     }
 }

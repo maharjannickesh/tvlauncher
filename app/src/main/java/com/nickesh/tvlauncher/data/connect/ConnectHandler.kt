@@ -31,11 +31,17 @@ class ConnectHandler(
     }
 
     private suspend fun submitCalendar(raw: String): ConnectOutcome {
-        val updated = ConnectRules.addCalendar(current().calendarUrls, raw).getOrElse { return failed(it) }
+        ConnectRules.addCalendar(current().calendarUrls, raw).onFailure { return failed(it) }
         val url = ConnectRules.normaliseCalendarUrl(raw) ?: return ConnectOutcome.Nothing
         val (name, events) = validateCalendar(url).getOrElse { return failed(it) }
-        save { s -> s.copy(calendarUrls = ConnectRules.addCalendar(s.calendarUrls, url).getOrDefault(updated)) }
-        return ConnectOutcome.CalendarAdded(name, events)
+        var rejected: Throwable? = null
+        save { s ->
+            ConnectRules.addCalendar(s.calendarUrls, url).fold(
+                onSuccess = { s.copy(calendarUrls = it) },
+                onFailure = { rejected = it; s },
+            )
+        }
+        return rejected?.let(::failed) ?: ConnectOutcome.CalendarAdded(name, events)
     }
 
     private suspend fun submitToken(token: String): ConnectOutcome {

@@ -108,6 +108,44 @@ class ConnectServerTest {
         assertFalse(html.contains("<b>"))
     }
 
+    @Test fun post_saveThrows_showsFailurePage() {
+        val h = ConnectHandler({ settings }, { Result.success("Home" to 1) }, { Result.success(1) }, { throw IllegalStateException("secret-boom") })
+        val s2 = ConnectServer(h, "abc234", 0); val p = s2.start()
+        try {
+            val r = client.newCall(Request.Builder().url("http://127.0.0.1:$p/c/abc234")
+                .post(FormBody.Builder().add("calendar", "https://x/a.ics").build()).build()).execute()
+            val body = r.body!!.string()
+            assertEquals(200, r.code)
+            assertTrue(body.contains("Something went wrong"))
+            assertFalse(body.contains("secret-boom"))
+        } finally { s2.stop() }
+    }
+
+    @Test fun post_nonNumericContentLength_is400() {
+        java.net.Socket("127.0.0.1", port).use { sock ->
+            sock.getOutputStream().write("POST /c/abc234 HTTP/1.1\r\nHost: x\r\nContent-Length: abc\r\n\r\n".toByteArray())
+            sock.getOutputStream().flush()
+            assertTrue(sock.getInputStream().bufferedReader().readLine().contains("400"))
+        }
+    }
+
+    @Test fun post_withQueryString_is400_andIgnoresQueryFields() {
+        val r = client.newCall(Request.Builder().url(base() + "/c/abc234?token=sneaky")
+            .post(FormBody.Builder().build()).build()).execute()
+        assertEquals(400, r.code)
+        assertEquals("", r.body!!.string())
+        assertTrue(tokenSeen.isEmpty())
+    }
+
+    @Test fun handler_calendarCapReachedAfterValidation_isFailed_andSavesNothing() {
+        var s = Settings(calendarUrls = listOf("https://a", "https://b", "https://c", "https://d"))
+        var first = true
+        val h = ConnectHandler({ if (first) { first = false; Settings() } else s }, { Result.success("N" to 1) }, { Result.success(1) }, { t -> s = t(s) })
+        val out = kotlinx.coroutines.runBlocking { h.submit("https://e", null) }
+        assertEquals(listOf(ConnectOutcome.Failed("Up to 4 calendars")), out)
+        assertEquals(4, s.calendarUrls.size)
+    }
+
     @Test fun stop_closesPort() {
         server.stop()
         try {
