@@ -1,5 +1,6 @@
 package com.nickesh.tvlauncher.ui.home
 
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
@@ -11,6 +12,7 @@ import com.nickesh.tvlauncher.domain.agenda.AgendaFreshness
 import com.nickesh.tvlauncher.domain.agenda.AgendaStatus
 import com.nickesh.tvlauncher.domain.agenda.BlockStatus
 import com.nickesh.tvlauncher.domain.agenda.ContinueWatching
+import com.nickesh.tvlauncher.domain.agenda.Pending
 import com.nickesh.tvlauncher.domain.agenda.TickRules
 import com.nickesh.tvlauncher.domain.agenda.TickState
 import com.nickesh.tvlauncher.domain.agenda.TodoOrder
@@ -21,6 +23,7 @@ import com.nickesh.tvlauncher.domain.agenda.WatchTile
 import com.nickesh.tvlauncher.domain.agenda.WatchingState
 import com.nickesh.tvlauncher.domain.clock.ZoneIds
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -54,9 +57,24 @@ data class AgendaUi(
     val watchingState: WatchingState,
 )
 
-private data class WatchSource(val rows: List<WatchNextRow>, val permitted: Boolean)
+/** [read]: a Watch Next read has completed. */
+private data class WatchSource(val rows: List<WatchNextRow>, val permitted: Boolean, val read: Boolean)
 
-private data class TodoSource(val cache: TodoCache?, val tick: TickState)
+/** A block's cache plus whether a refresh attempt has finished since the block connected. */
+private data class BlockSource<T>(val cache: T? = null, val attempted: Boolean = false)
+
+private data class TodoSource(val block: BlockSource<TodoCache>, val tick: TickState)
+
+private val LoadingUi = AgendaUi(
+    upNext = emptyList(),
+    upNextStatus = BlockStatus.LOADING,
+    todo = emptyList(),
+    todoOpen = 0,
+    todoStatus = BlockStatus.LOADING,
+    pendingIds = emptySet(),
+    watching = emptyList(),
+    watchingState = WatchingState.LOADING,
+)
 
 /**
  * Owns the Home agenda blocks: the calendar and Todoist refresh loops (cache first, never blocking on the network,
@@ -68,10 +86,13 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
     private val todoist = container.todoist
     private val watchNext = container.watchNext
 
-    private val _calendar = MutableStateFlow<CalendarCache?>(null)
-    private val _todo = MutableStateFlow<TodoCache?>(null)
+    private val _calendar = MutableStateFlow(BlockSource<CalendarCache>())
+    private val _todo = MutableStateFlow(BlockSource<TodoCache>())
     private val _tick = MutableStateFlow(TickState())
-    private val _watch = MutableStateFlow(WatchSource(emptyList(), watchNext.hasPermission()))
+    private val _watch = MutableStateFlow(WatchSource(emptyList(), watchNext.hasPermission(), read = false))
+
+    /** Monotonic time ([SystemClock.elapsedRealtime]) each ticked id's close succeeded; released by a later refresh. */
+    private val closedAt = ConcurrentHashMap<String, Long>()
 
     private val calendarWake = wakeFlow()
     private val todoWake = wakeFlow()
@@ -101,15 +122,17 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
                 .distinctUntilChanged()
                 .collectLatest { (urls, zone) ->
                     if (urls.isEmpty()) return@collectLatest
-                    if (_calendar.value == null) _calendar.value = quietly { calendar.cached() }
+                    val held = _calendar.value.cache ?: quietly { calendar.cached() }
+                    _calendar.value = BlockSource(held, attempted = false)
                     while (true) {
                         var ok = false
                         try {
                             val fresh = calendar.refresh(urls, ZoneIds.safe(zone))
-                            _calendar.value = fresh
+                            _calendar.value = BlockSource(fresh, attempted = true)
                             ok = fresh.ok
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
+                            _calendar.update { it.copy(attempted = true) }
                         }
                         withTimeoutOrNull(AgendaFreshness.sleepMs(AgendaFreshness.CALENDAR_MS, ok)) { calendarWake.first() }
                     }
@@ -121,20 +144,27 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
                 .distinctUntilChanged()
                 .collectLatest { token ->
                     if (token == null) return@collectLatest
-                    if (_todo.value == null) _todo.value = quietly { todoist.cached() }
+                    val held = _todo.value.cache ?: quietly { todoist.cached() }
+                    _todo.value = BlockSource(held, attempted = false)
                     while (true) {
                         var ok = false
                         try {
+                            val startedAt = SystemClock.elapsedRealtime()
                             val fresh = todoist.refresh(token)
-                            _todo.value = fresh
                             ok = fresh.ok
                             if (fresh.ok) {
-                                // Ids the server no longer lists are done; keep hiding any it still lists (close in flight).
-                                val ids = fresh.tasks.mapTo(HashSet()) { it.id }
-                                _tick.update { it.copy(hiddenIds = it.hiddenIds intersect ids) }
+                                // A list fetched after an id's close landed is the truth for it: a done task is gone, a
+                                // recurring one is back with its next date. Still-pending ids keep their entry for later.
+                                _tick.update { s ->
+                                    val released = closedAt.filter { (id, at) -> at < startedAt && !TickRules.isPending(s, id) }.keys
+                                    released.forEach { closedAt.remove(it) }
+                                    TickRules.releaseHidden(s, released)
+                                }
                             }
+                            _todo.value = BlockSource(fresh, attempted = true)
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
+                            _todo.update { it.copy(attempted = true) }
                         }
                         withTimeoutOrNull(AgendaFreshness.sleepMs(AgendaFreshness.TODO_MS, ok)) { todoWake.first() }
                     }
@@ -146,19 +176,25 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
     /** Home resume: each block refetches only when its last fetch is stale; Watch Next is always re-read. */
     fun refreshNow() {
         val now = System.currentTimeMillis()
-        if (AgendaFreshness.dueOnResume(_calendar.value?.fetchedAtMs, now)) calendarWake.tryEmit(Unit)
-        if (AgendaFreshness.dueOnResume(_todo.value?.fetchedAtMs, now)) todoWake.tryEmit(Unit)
+        if (AgendaFreshness.dueOnResume(_calendar.value.cache?.fetchedAtMs, now)) calendarWake.tryEmit(Unit)
+        if (AgendaFreshness.dueOnResume(_todo.value.cache?.fetchedAtMs, now)) todoWake.tryEmit(Unit)
         reloadWatchNext()
     }
 
     fun tick(id: String) {
-        var changed = false
-        _tick.update { s -> TickRules.tick(s, id, System.currentTimeMillis()).also { changed = it != s } }
-        if (!changed) return
+        var entry: Pending? = null
+        _tick.update { s ->
+            val next = TickRules.tick(s, id, System.currentTimeMillis())
+            entry = if (next != s) next.pending.last() else null
+            next
+        }
+        val mine = entry ?: return
+        closedAt.remove(id) // a re-tick must not be released by an earlier close's timestamp
         closes[id] = viewModelScope.async(Dispatchers.IO) {
             try {
                 val token = settingsRepo.settings.first().todoistToken ?: throw IllegalStateException("no token")
                 todoist.close(token, id)
+                closedAt[id] = SystemClock.elapsedRealtime()
                 true
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
@@ -170,7 +206,8 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
         }
         viewModelScope.launch {
             delay(TickRules.UNDO_MS)
-            _tick.update { TickRules.expire(it, System.currentTimeMillis()).first }
+            // Expire exactly this tick's entry: immune to wall-clock jumps, and a later re-tick keeps its own window.
+            _tick.update { s -> if (mine in s.pending) TickRules.expireId(s, id) else s }
             if (!TickRules.isPending(_tick.value, id)) closes.remove(id)
             todoWake.tryEmit(Unit)
         }
@@ -179,6 +216,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
     fun undo(id: String) {
         if (!TickRules.isPending(_tick.value, id)) return
         _tick.update { TickRules.undo(it, id) }
+        closedAt.remove(id)
         val close = closes.remove(id)
         viewModelScope.launch(Dispatchers.IO) {
             try {
@@ -216,7 +254,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
         _watch.update { it.copy(permitted = permitted) }
         viewModelScope.launch(Dispatchers.IO) {
             val rows = watchNext.read()
-            _watch.update { it.copy(rows = rows) }
+            _watch.update { it.copy(rows = rows, read = true) }
         }
     }
 
@@ -225,13 +263,15 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
         unregisterWatchNext = null
     }
 
-    private fun build(s: Settings, cal: CalendarCache?, todo: TodoSource, watch: WatchSource, nowMs: Long): AgendaUi {
+    /** Only ever called with loaded settings; before that [state] holds [LoadingUi]. */
+    private fun build(s: Settings, calBlock: BlockSource<CalendarCache>, todo: TodoSource, watch: WatchSource, nowMs: Long): AgendaUi {
+        val cal = calBlock.cache
         val zone = ZoneIds.safe(s.homeZone)
         val calConnected = s.calendarUrls.isNotEmpty()
         val upNext = if (calConnected && cal != null) UpNext.rows(cal.events, nowMs, zone, s.use24h) else emptyList()
 
         val todoConnected = s.todoistToken != null
-        val cache = todo.cache
+        val cache = todo.block.cache
         val today = Instant.ofEpochMilli(nowMs).atZone(zone).toLocalDate()
         val rows = if (todoConnected && cache != null) TodoOrder.rows(cache.tasks, today, zone) else emptyList()
         val visible = TickRules.visible(rows, todo.tick)
@@ -239,13 +279,17 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
         val tiles = if (watch.permitted) ContinueWatching.tiles(watch.rows) else emptyList()
         return AgendaUi(
             upNext = upNext,
-            upNextStatus = AgendaStatus.block(calConnected, cal != null, cal?.ok == true, cal?.events.isNullOrEmpty(), upNext.isEmpty()),
+            upNextStatus = AgendaStatus.block(
+                settingsLoaded = true, calConnected, cal != null, cal?.ok == true, cal?.events.isNullOrEmpty(), calBlock.attempted, upNext.isEmpty(),
+            ),
             todo = visible,
             todoOpen = TickRules.openCount(rows.size, todo.tick),
-            todoStatus = AgendaStatus.block(todoConnected, cache != null, cache?.ok == true, cache?.tasks.isNullOrEmpty(), visible.isEmpty()),
+            todoStatus = AgendaStatus.block(
+                settingsLoaded = true, todoConnected, cache != null, cache?.ok == true, cache?.tasks.isNullOrEmpty(), todo.block.attempted, visible.isEmpty(),
+            ),
             pendingIds = todo.tick.pending.mapTo(HashSet()) { it.id },
             watching = tiles,
-            watchingState = AgendaStatus.watching(watch.permitted, s.continueWatchingDismissed, tiles.isEmpty()),
+            watchingState = AgendaStatus.watching(settingsLoaded = true, watch.permitted, s.continueWatchingDismissed, watch.read, tiles.isEmpty()),
         )
     }
 
@@ -257,11 +301,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
             _watch,
             minuteTicker,
             ::build,
-        ).stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            build(Settings(), null, TodoSource(null, TickState()), _watch.value, System.currentTimeMillis()),
-        )
+        ).stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), LoadingUi)
 
     private companion object {
         const val MINUTE_MS = 60_000L

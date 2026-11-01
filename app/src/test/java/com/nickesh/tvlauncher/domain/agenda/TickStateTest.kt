@@ -56,4 +56,21 @@ class TickStateTest {
         val hidden = TickState(hiddenIds = setOf("h"))
         assertEquals(hidden, TickRules.tick(hidden, "h", 0L))
     }
+
+    @Test fun expireId_hidesOnlyThatId_regardlessOfClock() {
+        val s = TickRules.tick(TickRules.tick(empty, "a", 10_000L), "b", 10_000L)
+        val out = TickRules.expireId(s, "a")
+        assertEquals(listOf(Pending("b", 15_000L)), out.pending)
+        assertEquals(setOf("a"), out.hiddenIds)
+    }
+
+    @Test fun expireId_notPending_isNoOp() {
+        val undone = TickRules.undo(TickRules.tick(empty, "a", 0L), "a")
+        assertEquals(undone, TickRules.expireId(undone, "a"))
+    }
+
+    @Test fun releaseHidden_removesIds_keepsPendingAndOthers() {
+        val s = TickState(pending = listOf(Pending("p", 5L)), hiddenIds = setOf("a", "b"))
+        assertEquals(TickState(pending = listOf(Pending("p", 5L)), hiddenIds = setOf("b")), TickRules.releaseHidden(s, setOf("a", "zzz")))
+    }
 }

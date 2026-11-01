@@ -25,6 +25,15 @@ object TickRules {
         return s.copy(pending = still, hiddenIds = s.hiddenIds + ids) to ids
     }
 
+    /** Ends [id]'s undo window now (pending → hidden), whatever the clock says; a no-op when it is not pending. */
+    fun expireId(s: TickState, id: String): TickState =
+        if (!isPending(s, id)) s
+        else s.copy(pending = s.pending.filterNot { it.id == id }, hiddenIds = s.hiddenIds + id)
+
+    /** Stops hiding [ids] (their close is confirmed by a later server list); pending entries are untouched. */
+    fun releaseHidden(s: TickState, ids: Set<String>): TickState =
+        s.copy(hiddenIds = s.hiddenIds - ids)
+
     fun isPending(s: TickState, id: String): Boolean = s.pending.any { it.id == id }
 
     fun visible(tasks: List<TodoRow>, s: TickState): List<TodoRow> =
