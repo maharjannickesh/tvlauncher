@@ -15,6 +15,7 @@ import com.nickesh.tvlauncher.data.net.TextFetcher
 import com.nickesh.tvlauncher.data.settings.SettingsRepository
 import com.nickesh.tvlauncher.data.todoist.HttpTodoistApi
 import com.nickesh.tvlauncher.data.todoist.TodoistRepository
+import com.nickesh.tvlauncher.data.watchnext.WatchNextReader
 import com.nickesh.tvlauncher.data.system.StandbyTracker
 import com.nickesh.tvlauncher.data.system.SystemIntents
 import com.nickesh.tvlauncher.data.weather.DataStoreWeatherCache
@@ -55,4 +56,5 @@ class AppContainer(val context: Context) {
         settingsStore,
         log = { Log.i("Todoist", it) },
     )
+    val watchNext = WatchNextReader(context)
 }
