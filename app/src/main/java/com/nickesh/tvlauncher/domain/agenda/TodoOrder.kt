@@ -13,13 +13,12 @@ object TodoOrder {
     private val weekday = DateTimeFormatter.ofPattern("EEE", Locale.US)
     private val dayMonth = DateTimeFormatter.ofPattern("d MMM", Locale.US)
 
-    /** The due date in [zone]: a timed due is converted from its instant; floating/date-only values are taken as written. */
+    /** Todoist's `due.date` is the account's own local date, so it wins; the datetime (converted to [zone]) is only a fallback. */
     private fun dueDay(t: TodoTask, zone: ZoneId): LocalDate? {
-        t.dueDatetime?.let { dt ->
-            runCatching { return Instant.parse(dt).atZone(zone).toLocalDate() }
-            runCatching { return LocalDate.parse(dt.take(10)) }
-        }
-        return t.dueDate?.let { runCatching { LocalDate.parse(it.take(10)) }.getOrNull() }
+        t.dueDate?.let { d -> runCatching { return LocalDate.parse(d.take(10)) } }
+        val dt = t.dueDatetime ?: return null
+        runCatching { return Instant.parse(dt).atZone(zone).toLocalDate() }
+        return runCatching { LocalDate.parse(dt.take(10)) }.getOrNull()
     }
 
     fun sort(tasks: List<TodoTask>, today: LocalDate, zone: ZoneId): List<TodoTask> {

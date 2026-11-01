@@ -27,6 +27,17 @@ class TodoOrderTest {
         assertEquals("today" to false, TodoOrder.dueLabel(task, today, ny))
     }
 
+    @Test fun dueDate_winsOverDatetimeInstant() {
+        val task = t("x", "2026-11-01", "2026-11-02T02:00:00Z") // 9 pm Nov 1 in New York
+        assertEquals("today" to false, TodoOrder.dueLabel(task, today, ny))
+        assertEquals(listOf("x"), TodoOrder.sort(listOf(t("later", "2026-11-05"), task), today, ny).map { it.id }.take(1))
+    }
+
+    @Test fun datetimeOnly_fallsBackToZone() {
+        val task = TodoTask("y", "y", null, "2026-11-02T02:00:00Z", 0)
+        assertEquals("today" to false, TodoOrder.dueLabel(task, today, ny))
+    }
+
     @Test fun dueLabel_variants() {
         assertEquals("overdue" to true, TodoOrder.dueLabel(t("a", "2026-10-31"), today, ny))
         assertEquals("today" to false, TodoOrder.dueLabel(t("a", "2026-11-01"), today, ny))

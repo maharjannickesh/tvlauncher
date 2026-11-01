@@ -59,4 +59,16 @@ class TodoistApiTest {
         val o = server.takeRequest()
         assertEquals("POST", o.method); assertEquals("/api/v1/tasks/42/reopen", o.path)
     }
+
+    @Test fun tasks_emptyCursor_stopsAfterOnePage() = runBlocking {
+        server.enqueue(MockResponse().setBody("""{"results":[{"id":"1","content":"a"}],"next_cursor":""}"""))
+        assertEquals(listOf("1"), api.tasks("tok").map { it.id })
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test fun tasks_repeatedCursor_throwsInsteadOfLooping() = runBlocking {
+        repeat(5) { server.enqueue(MockResponse().setBody("""{"results":[{"id":"1","content":"a"}],"next_cursor":"same"}""")) }
+        try { api.tasks("tok"); fail() } catch (e: IOException) { assertEquals("todoist pagination loop", e.message) }
+        assertTrue(server.requestCount <= 3)
+    }
 }

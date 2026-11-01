@@ -27,6 +27,8 @@ class HttpTodoistApi(
     private val json: Json,
     private val baseUrl: String = "https://api.todoist.com/api/v1",
 ) : TodoistApi {
+    private companion object { const val MAX_PAGES = 100 }
+
     @Serializable private data class Due(val date: String? = null, val datetime: String? = null)
 
     @Serializable
@@ -43,13 +45,19 @@ class HttpTodoistApi(
     override suspend fun tasks(token: String): List<TodoTask> {
         val out = mutableListOf<TodoTask>()
         var cursor: String? = null
+        val seen = mutableSetOf<String>()
+        var pages = 0
         do {
             val url = "$baseUrl/tasks".toHttpUrl().newBuilder().apply { cursor?.let { addQueryParameter("cursor", it) } }.build()
             val body = call(Request.Builder().url(url).header("Authorization", "Bearer $token").get().build())
             val page = json.decodeFromString<Page>(body)
             page.results.mapTo(out) { TodoTask(it.id, it.content, it.due?.date, it.due?.datetime, it.child_order ?: it.order ?: 0) }
             cursor = page.next_cursor
-        } while (cursor != null)
+            // Null or empty ends the list; a repeated cursor or runaway page count is a server fault, not more data.
+            if (!cursor.isNullOrEmpty() && (!seen.add(cursor) || ++pages >= MAX_PAGES)) {
+                throw IOException("todoist pagination loop")
+            }
+        } while (!cursor.isNullOrEmpty())
         return out
     }
 
