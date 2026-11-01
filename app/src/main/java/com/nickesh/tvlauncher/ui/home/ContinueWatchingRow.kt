@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -77,8 +78,15 @@ fun ContinueWatchingRow(
     val currentContent by rememberUpdatedState(content)
     var rowHadFocus by remember { mutableStateOf(false) }
     var focusedContent by remember { mutableStateOf<Pair<WatchingState, List<Long>>?>(null) }
+    var inRow by remember { mutableStateOf(false) } // focus is inside the row right now
     LaunchedEffect(content) {
-        if (rowHadFocus) runCatching { stop.requestFocus() }
+        if (!rowHadFocus) return@LaunchedEffect
+        runCatching { stop.requestFocus() }
+        withFrameNanos { }
+        // Re-sync to the truth: the flag stays set only if focus really is in the row, and the content it is on is
+        // recorded, so a later user move out of the row (content unchanged) clears it.
+        rowHadFocus = inRow
+        focusedContent = content
     }
     val stopProps = Modifier.focusProperties { this.down = down; this.right = right }
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dpx())) {
@@ -95,6 +103,7 @@ fun ContinueWatchingRow(
                 .fillMaxWidth()
                 .height(TILE_H.dpx())
                 .onFocusChanged {
+                    inRow = it.hasFocus
                     if (it.hasFocus) {
                         rowHadFocus = true
                         focusedContent = currentContent

@@ -22,6 +22,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -95,7 +96,12 @@ fun TodoCard(
             runCatching { entry.requestFocus() } // the card's Surface (no rows left)
         } else {
             runCatching { listState.scrollToItem(ids.indexOf(target)) }
-            runCatching { rowRequesters[target]?.requestFocus() }
+            // The row may not be composed until the next frame after the scroll; retry once, then fall back to the card.
+            fun focusTarget(): Boolean = runCatching { rowRequesters[target]?.requestFocus() == true }.getOrDefault(false)
+            if (!focusTarget()) {
+                withFrameNanos { }
+                if (!focusTarget()) runCatching { entry.requestFocus() }
+            }
         }
     }
     if (showRows) {
