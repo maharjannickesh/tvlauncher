@@ -60,6 +60,7 @@ import com.nickesh.tvlauncher.ui.theme.TvLauncherTheme
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
 import com.nickesh.tvlauncher.ui.welcome.WelcomeScreen
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.math.max
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -340,9 +341,16 @@ class MainActivity : ComponentActivity() {
                             val submit = { cal: String?, token: String? ->
                                 checking = true
                                 lifecycleScope.launch {
-                                    val r = withContext(Dispatchers.IO) { handler.submit(cal, token) }
-                                    results = r
-                                    checking = false
+                                    results = try {
+                                        withContext(Dispatchers.IO) { handler.submit(cal, token) }
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        Log.w("Connect", "typed submit failed: ${e.javaClass.simpleName}")
+                                        listOf(ConnectOutcome.Failed("Something went wrong — try again"))
+                                    } finally {
+                                        checking = false
+                                    }
                                 }
                                 Unit
                             }

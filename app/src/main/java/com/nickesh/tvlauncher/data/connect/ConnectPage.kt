@@ -27,10 +27,10 @@ button{margin-top:22px;padding:14px 28px;font-size:17px;border:0;border-radius:8
 <form method=post action="">
 <label for=calendar>Google Calendar link</label>
 <p class=hint>Google Calendar → Settings → your calendar → Secret address in iCal format. Paste the link.</p>
-<input id=calendar name=calendar type=url autocomplete=off autocapitalize=off>
+<input id=calendar name=calendar type=url inputmode=url autocomplete=off autocapitalize=off>
 <label for=token>Todoist token</label>
 <p class=hint>Todoist → Settings → Integrations → Developer → API token. Paste it.</p>
-<input id=token name=token type=text autocomplete=off autocapitalize=off>
+<input id=token name=token type=password autocomplete=off autocapitalize=off>
 <button type=submit>Save</button></form>$connected</body></html>"""
     }
 
