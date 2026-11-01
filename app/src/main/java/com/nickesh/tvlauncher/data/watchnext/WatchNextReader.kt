@@ -8,13 +8,20 @@ import android.media.tv.TvContract.WatchNextPrograms as Col
 import android.os.Handler
 import android.os.Looper
 
-class WatchNextReader(private val context: Context) {
+/** The Watch Next reads the agenda needs; [WatchNextReader] is the provider-backed one. */
+interface WatchNextSource {
+    fun hasPermission(): Boolean
+    fun read(): List<WatchNextRow>
+    fun observe(onChange: () -> Unit): () -> Unit
+}
+
+class WatchNextReader(private val context: Context) : WatchNextSource {
     private val uri = TvContract.WatchNextPrograms.CONTENT_URI
 
-    fun hasPermission(): Boolean =
+    override fun hasPermission(): Boolean =
         context.checkSelfPermission(PERMISSION) == PackageManager.PERMISSION_GRANTED
 
-    fun read(): List<WatchNextRow> {
+    override fun read(): List<WatchNextRow> {
         if (!hasPermission()) return emptyList()
         return try {
             val projection = arrayOf(
@@ -49,7 +56,7 @@ class WatchNextReader(private val context: Context) {
         }
     }
 
-    fun observe(onChange: () -> Unit): () -> Unit {
+    override fun observe(onChange: () -> Unit): () -> Unit {
         val observer = object : ContentObserver(Handler(Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) = onChange()
         }

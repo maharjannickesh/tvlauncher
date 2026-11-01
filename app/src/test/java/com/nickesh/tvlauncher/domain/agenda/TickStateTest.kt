@@ -44,10 +44,17 @@ class TickStateTest {
         assertEquals(listOf("a", "b", "d"), out.map { it.id })
     }
 
-    @Test fun openCount_subtractsPendingAndHidden() {
+    @Test fun openCount_countsRowsNeitherPendingNorHidden() {
         val s = TickState(listOf(Pending("b", 9L)), setOf("c"))
-        assertEquals(2, TickRules.openCount(4, s))
-        assertEquals(0, TickRules.openCount(1, s))
+        assertEquals(2, TickRules.openCount(listOf(row("a"), row("b"), row("c"), row("d")), s))
+        assertEquals(1, TickRules.openCount(listOf(row("a")), s))
+        assertEquals(0, TickRules.openCount(listOf(row("b"), row("c")), s))
+    }
+
+    @Test fun openCount_ignoresTickedIdsMissingFromRows() {
+        // A hidden id the server already dropped must not shrink the count of the rows still listed.
+        val s = TickState(listOf(Pending("gone1", 9L)), setOf("gone2"))
+        assertEquals(2, TickRules.openCount(listOf(row("a"), row("d")), s))
     }
 
     @Test fun tick_twice_isIdempotent() {

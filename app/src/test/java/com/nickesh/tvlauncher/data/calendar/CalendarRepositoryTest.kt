@@ -29,7 +29,8 @@ private class MemoryStore : DataStore<Preferences> {
 private class FakeFetcher(val bodies: MutableMap<String, String> = mutableMapOf()) : TextFetcher {
     val failing = mutableSetOf<String>()
     override suspend fun get(url: String, bearer: String?): String {
-        if (url in failing) throw IOException("offline")
+        // Real HTTP stacks often echo the request URL in the message; the repository must never log it.
+        if (url in failing) throw IOException(url)
         return bodies[url] ?: throw IOException("http 404")
     }
 }

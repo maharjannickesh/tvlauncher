@@ -22,6 +22,11 @@ class TodoistRepository(
 ) {
     private val key = stringPreferencesKey("todoist_json")
 
+    /** Drops the cached blob (on disconnect), so nothing from the old link or token stays on disk. */
+    suspend fun clear() {
+        store.edit { it.remove(key) }
+    }
+
     /** Pure read; a corrupt blob reads as null. Never touches the network. */
     suspend fun cached(): TodoCache? =
         store.data.first()[key]?.let { runCatching { json.decodeFromString<TodoCache>(it) }.getOrNull() }
@@ -44,8 +49,6 @@ class TodoistRepository(
     }
 
     suspend fun close(token: String, id: String) = api.close(token, id)
-
-    suspend fun reopen(token: String, id: String) = api.reopen(token, id)
 
     /** Open task count, or a failure carrying the user-facing copy. */
     suspend fun validate(token: String): Result<Int> = try {

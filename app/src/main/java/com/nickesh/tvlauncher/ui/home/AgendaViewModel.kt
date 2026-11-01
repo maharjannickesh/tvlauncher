@@ -5,9 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nickesh.tvlauncher.AppContainer
 import com.nickesh.tvlauncher.data.calendar.CalendarCache
+import com.nickesh.tvlauncher.data.calendar.CalendarRepository
 import com.nickesh.tvlauncher.data.settings.Settings
+import com.nickesh.tvlauncher.data.settings.SettingsRepository
 import com.nickesh.tvlauncher.data.todoist.TodoCache
+import com.nickesh.tvlauncher.data.todoist.TodoistRepository
 import com.nickesh.tvlauncher.data.watchnext.WatchNextRow
+import com.nickesh.tvlauncher.data.watchnext.WatchNextSource
 import com.nickesh.tvlauncher.domain.agenda.AgendaFreshness
 import com.nickesh.tvlauncher.domain.agenda.AgendaStatus
 import com.nickesh.tvlauncher.domain.agenda.BlockStatus
@@ -25,9 +29,8 @@ import com.nickesh.tvlauncher.domain.clock.ZoneIds
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.coroutines.cancellation.CancellationException
-import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -80,18 +83,24 @@ private val LoadingUi = AgendaUi(
  * Owns the Home agenda blocks: the calendar and Todoist refresh loops (cache first, never blocking on the network,
  * last good data kept on failure), the tick/undo window, and the Watch Next read. Never logs tokens or URLs.
  */
-class AgendaViewModel(container: AppContainer) : ViewModel() {
-    private val settingsRepo = container.settings
-    private val calendar = container.calendar
-    private val todoist = container.todoist
-    private val watchNext = container.watchNext
+class AgendaViewModel(
+    private val settingsRepo: SettingsRepository,
+    private val calendar: CalendarRepository,
+    private val todoist: TodoistRepository,
+    private val watchNext: WatchNextSource,
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    /** Monotonic clock for the close/refresh ordering. */
+    private val elapsed: () -> Long = SystemClock::elapsedRealtime,
+    private val wallClock: () -> Long = System::currentTimeMillis,
+) : ViewModel() {
+    constructor(container: AppContainer) : this(container.settings, container.calendar, container.todoist, container.watchNext)
 
     private val _calendar = MutableStateFlow(BlockSource<CalendarCache>())
     private val _todo = MutableStateFlow(BlockSource<TodoCache>())
     private val _tick = MutableStateFlow(TickState())
     private val _watch = MutableStateFlow(WatchSource(emptyList(), watchNext.hasPermission(), read = false))
 
-    /** Monotonic time ([SystemClock.elapsedRealtime]) each ticked id's close succeeded; released by a later refresh. */
+    /** Monotonic time ([elapsed]) each ticked id's close landed; released by a refresh that started after it. */
     private val closedAt = ConcurrentHashMap<String, Long>()
 
     private val calendarWake = wakeFlow()
@@ -100,28 +109,30 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
     private val _toasts = MutableSharedFlow<String>(extraBufferCapacity = 4)
     val toasts: SharedFlow<String> = _toasts
 
-    /** In-flight `close` per ticked id, so an undo reopens only after (and only if) the close landed. Main thread only. */
-    private val closes = mutableMapOf<String, Deferred<Boolean>>()
-
     /** Content-observer unregister; main thread only. */
     private var unregisterWatchNext: (() -> Unit)? = null
 
     /** Minute-aligned clock so "in 46 min" and the due labels stay live. */
     private val minuteTicker = flow {
         while (true) {
-            val now = System.currentTimeMillis()
+            val now = wallClock()
             emit(now)
             delay(MINUTE_MS - now % MINUTE_MS)
         }
     }
 
     init {
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(io) {
             settingsRepo.settings
                 .map { it.calendarUrls to it.homeZone }
                 .distinctUntilChanged()
                 .collectLatest { (urls, zone) ->
-                    if (urls.isEmpty()) return@collectLatest
+                    if (urls.isEmpty()) {
+                        // Disconnected: forget the old feeds' events, in memory and on disk.
+                        _calendar.value = BlockSource()
+                        quietly { calendar.clear() }
+                        return@collectLatest
+                    }
                     val held = _calendar.value.cache ?: quietly { calendar.cached() }
                     _calendar.value = BlockSource(held, attempted = false)
                     while (true) {
@@ -138,30 +149,40 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
                     }
                 }
         }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(io) {
             settingsRepo.settings
                 .map { it.todoistToken }
                 .distinctUntilChanged()
                 .collectLatest { token ->
-                    if (token == null) return@collectLatest
+                    if (token == null) {
+                        // Disconnected: forget the old account's tasks and ticks, in memory and on disk.
+                        _todo.value = BlockSource()
+                        _tick.value = TickState()
+                        closedAt.clear()
+                        quietly { todoist.clear() }
+                        return@collectLatest
+                    }
                     val held = _todo.value.cache ?: quietly { todoist.cached() }
                     _todo.value = BlockSource(held, attempted = false)
                     while (true) {
                         var ok = false
                         try {
-                            val startedAt = SystemClock.elapsedRealtime()
+                            val startedAt = elapsed()
                             val fresh = todoist.refresh(token)
                             ok = fresh.ok
+                            // The fresh list goes out first, so a released id is never shown from the old list.
+                            _todo.value = BlockSource(fresh, attempted = true)
                             if (fresh.ok) {
                                 // A list fetched after an id's close landed is the truth for it: a done task is gone, a
                                 // recurring one is back with its next date. Still-pending ids keep their entry for later.
+                                var released: Map<String, Long> = emptyMap()
                                 _tick.update { s ->
-                                    val released = closedAt.filter { (id, at) -> at < startedAt && !TickRules.isPending(s, id) }.keys
-                                    released.forEach { closedAt.remove(it) }
-                                    TickRules.releaseHidden(s, released)
+                                    // Pure: the CAS may re-run this lambda, so closedAt is only read here.
+                                    released = closedAt.filter { (id, at) -> at < startedAt && !TickRules.isPending(s, id) }
+                                    TickRules.releaseHidden(s, released.keys)
                                 }
+                                released.forEach { (id, at) -> closedAt.remove(id, at) }
                             }
-                            _todo.value = BlockSource(fresh, attempted = true)
                         } catch (e: Exception) {
                             if (e is CancellationException) throw e
                             _todo.update { it.copy(attempted = true) }
@@ -175,67 +196,58 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
 
     /** Home resume: each block refetches only when its last fetch is stale; Watch Next is always re-read. */
     fun refreshNow() {
-        val now = System.currentTimeMillis()
+        val now = wallClock()
         if (AgendaFreshness.dueOnResume(_calendar.value.cache?.fetchedAtMs, now)) calendarWake.tryEmit(Unit)
         if (AgendaFreshness.dueOnResume(_todo.value.cache?.fetchedAtMs, now)) todoWake.tryEmit(Unit)
         reloadWatchNext()
     }
 
+    /**
+     * Ticks [id] locally for the undo window (check + strike, count drops). When the window ends the row hides and
+     * `close` is sent once; a failed close un-hides the row and toasts. Nothing reaches Todoist inside the window.
+     */
     fun tick(id: String) {
         var entry: Pending? = null
         _tick.update { s ->
-            val next = TickRules.tick(s, id, System.currentTimeMillis())
+            val next = TickRules.tick(s, id, wallClock())
             entry = if (next != s) next.pending.last() else null
             next
         }
         val mine = entry ?: return
         closedAt.remove(id) // a re-tick must not be released by an earlier close's timestamp
-        closes[id] = viewModelScope.async(Dispatchers.IO) {
+        viewModelScope.launch(io) {
+            delay(TickRules.UNDO_MS)
+            // Expire exactly this tick's entry: immune to wall-clock jumps, and a later re-tick keeps its own window.
+            var expired = false
+            _tick.update { s ->
+                expired = mine in s.pending
+                if (expired) TickRules.expireId(s, id) else s
+            }
+            if (!expired) return@launch // undone inside the window: purely local, nothing to send
             try {
                 val token = settingsRepo.settings.first().todoistToken ?: throw IllegalStateException("no token")
                 todoist.close(token, id)
-                closedAt[id] = SystemClock.elapsedRealtime()
-                true
+                closedAt[id] = elapsed()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                // Also un-hide: a close that fails after the window would otherwise stay hidden while the server lists it.
-                _tick.update { s -> TickRules.fail(s, id).let { it.copy(hiddenIds = it.hiddenIds - id) } }
+                // The task is still open on the server: show it again.
+                _tick.update { s -> TickRules.releaseHidden(s, setOf(id)) }
                 _toasts.tryEmit(TOAST)
-                false
             }
-        }
-        viewModelScope.launch {
-            delay(TickRules.UNDO_MS)
-            // Expire exactly this tick's entry: immune to wall-clock jumps, and a later re-tick keeps its own window.
-            _tick.update { s -> if (mine in s.pending) TickRules.expireId(s, id) else s }
-            if (!TickRules.isPending(_tick.value, id)) closes.remove(id)
             todoWake.tryEmit(Unit)
         }
     }
 
+    /** Inside the window only; local, sends nothing. */
     fun undo(id: String) {
-        if (!TickRules.isPending(_tick.value, id)) return
-        _tick.update { TickRules.undo(it, id) }
-        closedAt.remove(id)
-        val close = closes.remove(id)
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                // A failed close already toasted and left the task open; nothing to reopen.
-                if (close != null && !close.await()) return@launch
-                val token = settingsRepo.settings.first().todoistToken ?: throw IllegalStateException("no token")
-                todoist.reopen(token, id)
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-                _toasts.tryEmit(TOAST)
-            }
-        }
+        _tick.update { s -> if (TickRules.isPending(s, id)) TickRules.undo(s, id) else s }
     }
 
     fun onWatchNextPermission(granted: Boolean) {
         if (granted) {
             reloadWatchNext()
             // A grant (from Home or Settings) brings the row back even after an earlier "Not now".
-            viewModelScope.launch(Dispatchers.IO) {
+            viewModelScope.launch(io) {
                 try {
                     settingsRepo.update { if (it.continueWatchingDismissed) it.copy(continueWatchingDismissed = false) else it }
                 } catch (e: Exception) {
@@ -243,7 +255,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
                 }
             }
         } else {
-            viewModelScope.launch(Dispatchers.IO) {
+            viewModelScope.launch(io) {
                 try {
                     settingsRepo.update { it.copy(continueWatchingDismissed = true) }
                 } catch (e: Exception) {
@@ -260,7 +272,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
             unregisterWatchNext = watchNext.observe { reloadWatchNext() }
         }
         _watch.update { it.copy(permitted = permitted) }
-        viewModelScope.launch(Dispatchers.IO) {
+        viewModelScope.launch(io) {
             val rows = watchNext.read()
             _watch.update { it.copy(rows = rows, read = true) }
         }
@@ -291,7 +303,7 @@ class AgendaViewModel(container: AppContainer) : ViewModel() {
                 settingsLoaded = true, calConnected, cal != null, cal?.ok == true, cal?.events.isNullOrEmpty(), calBlock.attempted, upNext.isEmpty(),
             ),
             todo = visible,
-            todoOpen = TickRules.openCount(rows.size, todo.tick),
+            todoOpen = TickRules.openCount(rows, todo.tick),
             todoStatus = AgendaStatus.block(
                 settingsLoaded = true, todoConnected, cache != null, cache?.ok == true, cache?.tasks.isNullOrEmpty(), todo.block.attempted, visible.isEmpty(),
             ),

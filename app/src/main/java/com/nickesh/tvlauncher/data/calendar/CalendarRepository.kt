@@ -32,6 +32,11 @@ class CalendarRepository(
 ) {
     private val key = stringPreferencesKey("calendar_json")
 
+    /** Drops the cached blob (on disconnect), so nothing from the old link or token stays on disk. */
+    suspend fun clear() {
+        store.edit { it.remove(key) }
+    }
+
     /** Pure read; a corrupt blob reads as null. */
     suspend fun cached(): CalendarCache? =
         store.data.first()[key]?.let { runCatching { json.decodeFromString<CalendarCache>(it) }.getOrNull() }
@@ -59,7 +64,7 @@ class CalendarRepository(
                 val old = previous?.byUrl?.get(url).orEmpty()
                 events += old
                 byUrl[url] = old
-                log("$host failed: ${e.message}")
+                log("$host failed: ${e.javaClass.simpleName}")
             }
         }
         val out = CalendarCache(events, now, ok, byUrl)
@@ -75,7 +80,7 @@ class CalendarRepository(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            log("$host validate failed: ${e.message}")
+            log("$host validate failed: ${e.javaClass.simpleName}")
             return Result.failure(IOException(NOT_A_CALENDAR))
         }
         if (!isCalendar(body)) {

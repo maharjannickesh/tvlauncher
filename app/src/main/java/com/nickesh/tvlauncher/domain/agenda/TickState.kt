@@ -39,6 +39,7 @@ object TickRules {
     fun visible(tasks: List<TodoRow>, s: TickState): List<TodoRow> =
         tasks.filterNot { it.id in s.hiddenIds }
 
-    fun openCount(total: Int, s: TickState): Int =
-        (total - s.pending.size - s.hiddenIds.size).coerceAtLeast(0)
+    /** Rows still open: neither in their undo window nor hidden (ids absent from [rows] never count). */
+    fun openCount(rows: List<TodoRow>, s: TickState): Int =
+        rows.count { r -> r.id !in s.hiddenIds && !isPending(s, r.id) }
 }
