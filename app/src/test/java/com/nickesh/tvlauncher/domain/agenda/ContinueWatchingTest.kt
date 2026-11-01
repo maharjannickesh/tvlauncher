@@ -36,7 +36,10 @@ class ContinueWatchingTest {
 
     @Test fun meta_partialAndEmpty() {
         assertEquals("S3 · Up next", ContinueWatching.meta(row(type = 1, season = "3")))
-        assertEquals("E22 · Up next", ContinueWatching.meta(row(type = 0, episode = "22")))
+        assertEquals("E22 · Up next", ContinueWatching.meta(row(type = 2, episode = "22")))
+        assertEquals("E22", ContinueWatching.meta(row(type = 0, episode = "22")))
+        assertEquals("S3 E22", ContinueWatching.meta(row(type = 0, season = "3", episode = "22")))
+        assertEquals("S3 E22", ContinueWatching.meta(row(type = 0, season = "3", episode = "22", pos = 5, dur = 0)))
         assertEquals("Up next", ContinueWatching.meta(row(type = 1)))
     }
 

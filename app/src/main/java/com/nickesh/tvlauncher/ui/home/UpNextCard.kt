@@ -8,15 +8,19 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.tv.material3.Border
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Surface
@@ -58,7 +62,17 @@ fun UpNextCard(rows: List<UpNextRow>, status: BlockStatus, onClick: () -> Unit, 
             AgendaHeader("UP NEXT", "Google Calendar")
             val line = status.copy(unreachable = "Can't reach calendar", empty = "Nothing scheduled")
             when {
-                status == BlockStatus.OK -> rows.forEach { r -> EventLine(r, accent) }
+                status == BlockStatus.OK -> {
+                    // One shared time column sized to the widest visible time, so every title starts at the same x.
+                    val timeStyle = timeStyle()
+                    val measurer = rememberTextMeasurer()
+                    val density = LocalDensity.current
+                    val widest = remember(rows, timeStyle, measurer) {
+                        rows.maxOfOrNull { measurer.measure(it.time, timeStyle, maxLines = 1, softWrap = false).size.width } ?: 0
+                    }
+                    val timeWidth = with(density) { widest.toDp() } + 12.dpx()
+                    rows.forEach { r -> EventLine(r, accent, timeStyle, timeWidth) }
+                }
                 line != null -> Box(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) { StatusLine(line) }
                 else -> Unit // LOADING: empty body, the frame and header keep the layout still
             }
@@ -67,23 +81,27 @@ fun UpNextCard(rows: List<UpNextRow>, status: BlockStatus, onClick: () -> Unit, 
 }
 
 @Composable
-private fun EventLine(r: UpNextRow, accent: Color) {
+private fun timeStyle() = TextStyle(
+    fontFeatureSettings = "tnum",
+    fontFamily = Outfit,
+    fontWeight = FontWeight.W500,
+    fontSize = 22.spx(),
+)
+
+@Composable
+private fun EventLine(r: UpNextRow, accent: Color, timeStyle: TextStyle, timeWidth: Dp) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             r.time,
-            modifier = Modifier.width(150.dpx()).padding(end = 12.dpx()),
+            modifier = Modifier.widthIn(min = timeWidth).padding(end = 12.dpx()),
             color = accent,
-            style = TextStyle(fontFeatureSettings = "tnum"),
-            fontFamily = Outfit,
-            fontWeight = FontWeight.W500,
-            fontSize = 22.spx(),
+            style = timeStyle,
             maxLines = 1,
             softWrap = false,
-            overflow = TextOverflow.Ellipsis,
         )
         Text(
             r.title,
-            modifier = Modifier.weight(1f, fill = false),
+            modifier = Modifier.weight(1f),
             fontFamily = Outfit,
             fontWeight = FontWeight.W400,
             fontSize = 22.spx(),

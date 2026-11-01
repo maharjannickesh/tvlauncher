@@ -28,9 +28,10 @@ object ContinueWatching {
         ).joinToString(" ").ifEmpty { null }
         val pos = r.positionMs
         val dur = r.durationMs
+        // CONTINUE without a known position shows just the prefix ("S3 E22"); NEXT/NEW always say "Up next".
         val trailer = when {
-            r.type == TYPE_CONTINUE && pos != null && dur != null && dur > 0 -> timeLeft(dur - pos)
-            r.type == TYPE_CONTINUE && (pos == null || dur == null) || r.type != TYPE_CONTINUE -> "Up next"
+            r.type != TYPE_CONTINUE -> "Up next"
+            pos != null && dur != null && dur > 0 -> timeLeft(dur - pos)
             else -> null
         }
         return listOfNotNull(prefix, trailer).joinToString(" · ")
