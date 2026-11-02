@@ -12,6 +12,9 @@ Built with Kotlin and Jetpack Compose for TV (`androidx.tv:tv-material`), DataSt
 - Search opens **All apps with a search field**: the TV keyboard rises as soon as the field is focused and the grid filters as you type. Back with the keyboard up dismisses it, the next Back clears the query, the next leaves. The **All apps** tile on Home opens the same screen with the first app focused instead.
 - Settings and Background screens, all D-pad driven, with the TV on-screen keyboard for text rows and a right-side city picker for places.
 - Weather: four independent fetches (home plus the three clocks), cached 30 minutes per city, refreshed sooner when the location changes.
+- **Up next**: the next three events from up to four Google Calendars (each calendar's "Secret address in iCal format"), with "in 46 min" on the first. Read-only; refreshes every 15 minutes and on return to Home.
+- **To do**: open Todoist tasks (overdue, today, later, undated). Select ticks a task: it shows a check at once, Select again within 5 seconds undoes it, and after 5 seconds the TV marks it complete in Todoist. Refreshes every 5 minutes and on return to Home.
+- **Continue watching**: the three shows you were last in the middle of, from Android TV's Watch Next list (asks once for "Read TV listings"). Select resumes playback. Only apps that publish to Watch Next appear; on this TV that is Prime Video.
 - Flip-clock screensaver as a real `DreamService`.
 - Every network call degrades to cache or placeholders; no analytics, no accounts.
 
@@ -52,6 +55,19 @@ Rows: Name, **Home**, **Clock 1/2/3**, Units (F/C), 24-hour clock, Accent colour
 
   Without it the row shows "Needs permission ›" and a toast with this hint.
 
+## Connecting a calendar and Todoist
+
+No laptop needed. On the TV open **Settings → Calendar…** (or **To-do list…**). The Connections screen shows a QR code and an address like `http://10.0.0.21:34103/c/xq9nfs`.
+
+1. Scan the QR with a phone on the same Wi-Fi.
+2. Paste the calendar link: Google Calendar on the web → Settings → your calendar → **Secret address in iCal format**. Add up to four, one at a time.
+3. Paste the Todoist token: Todoist → Settings → Integrations → Developer → **API token**.
+4. Press Save. The phone and the TV both confirm, e.g. "Calendar connected · Nickesh · 12 events".
+
+Each connection has a **Disconnect** row on the same screen. You can also type a link or token on the TV instead of using the phone.
+
+How it is protected: the page is served by the TV only while the Connections screen is open (it stops when you leave or the TV sleeps, and a new code appears on wake), only on your home network, and only at the one-time code shown on screen; anything else gets "404". The token is shown only as `••••` plus its last four characters, is never logged, and the app opts out of Android backups. This is meant for a home network; anyone on the same Wi-Fi who can see the TV screen could also reach the page while it is open.
+
 ## Performance (debug build, Chromecast with Google TV, armv7)
 
 Measured 2026-10-29 with `am start -W` after a force-stop:
@@ -89,3 +105,5 @@ Debug builds accept `-PwelcomeReplayMs=<ms>` (for example `./gradlew installDebu
 - Google Photos Picker backgrounds (QR plus device-code OAuth; needs a Google Cloud OAuth client).
 - Rearrange the apps row (and a favourites editor).
 - Snow and storm weather icons (both map to rain in v1).
+- Agenda follow-ups: parse each calendar feed once and cap its size; pause agenda refreshes while another app is in front; show "Off" for Continue watching in Settings; treat a revoked Todoist token as "Can't reach Todoist".
+- Public-repo prep: release signing, a GitHub Release APK, and a "reset everything" for a new owner.
